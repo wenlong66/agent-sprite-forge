@@ -382,6 +382,7 @@ def test_local_fallthrough_and_no_route_for_video(env, capsys, monkeypatch, tmp_
                                     "skipped": ["api:xai: no XAI_API_KEY in the environment or the user config file",
                                                 "api:byteplus: no ARK_API_KEY in the environment or the user config file",
                                                 "api:fal: no FAL_KEY in the environment or the user config file",
+                                                "api:wan: no DASHSCOPE_API_KEY in the environment or the user config file",
                                                 "local:grok-acp: Grok Build CLI is not installed (not found on "
                                                 "PATH)"]}
 
@@ -485,7 +486,7 @@ def test_unexpected_errors_are_one_clean_line(env, capsys, monkeypatch):
 
 @pytest.mark.parametrize("extra, message", [
     (["image", "--size", "big"], "--size must be auto or WIDTHxHEIGHT"),
-    (["video", "--reference", "first.png", "--duration", "20"], "--duration must be 1..15"),
+    (["video", "--reference", "first.png", "--duration", "31"], "--duration must be 1..30"),
     (["video", "--reference", "nope.png"], "reference image nope.png does not exist"),
     (["video", "--reference", "first.png", "--last-frame", "gone.png"], "last frame gone.png does not exist"),
 ])

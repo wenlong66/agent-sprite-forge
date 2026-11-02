@@ -1,7 +1,7 @@
-# Provider survey: last verified 2026-10-06
+# Provider survey: verified 2026-10-06; Wan adapter added 2026-11-02
 
 This survey is about integration, **not** a benchmark of quality or latency. Each request shape was
-checked against the vendor's official documentation on 2026-10-06. No API call was made: the owner
+checked against the vendor's official documentation on 2026-10-06 (Wan direct adapter: 2026-11-02). No API call was made: the owner
 has no keys, so the community reports real-world differences. Machine-readable limits live in
 [capabilities.json](capabilities.json) (one record per model, with `verifiedAt` and doc URLs) and
 list prices in [prices.json](prices.json).
@@ -33,6 +33,7 @@ Runway's own gen4.x models cannot pin a last frame, and Midjourney still has no 
 | xAI | `XAI_API_KEY` | `grok-imagine-image-2.0` (default), `grok-imagine-image` | `grok-imagine-video-1.5` (default), `grok-imagine-video-1.5-lite` (draft), `grok-imagine-video` | Images synchronous; video job, then poll |
 | BytePlus ModelArk | `ARK_API_KEY` | `dola-seedream-5-0-pro-260628` (default), `dola-seedream-5-0-flash-260915` (draft) | `dreamina-seedance-2-0-260128` (default), `-mini-260615` (draft), `-fast-260128`, `dreamina-seedance-2-5-260628` (hero) | Images synchronous; video task, then poll |
 | fal.ai | `FAL_KEY` | reference edits: `fal-ai/nano-banana-2/edit` (default), `fal-ai/nano-banana-pro/edit` (hero), `bytedance/seedream/v5/pro/edit`, `openai/gpt-image-2/edit` | `fal-ai/kling-video/v3/pro/image-to-video` (default), `.../v3/standard/...`, `fal-ai/veo3.1/first-last-frame-to-video` and `.../fast/...`, `luma/agent/ray/v3.2/image-to-video`, `minimax/h3/image-to-video`, `alibaba/wan-3.0/image-to-video` (draft), `fal-ai/vidu/q3/image-to-video`, `lightricks/ltx-2.5/image-to-video/pro` and `/fast` | Queue: submit, status, result |
+| Alibaba Cloud Wan | `DASHSCOPE_API_KEY` | none | `wan3.0-video` (all tiers) | Task: submit, then poll |
 
 What each provider can do for a sprite pipeline:
 
@@ -43,10 +44,24 @@ What each provider can do for a sprite pipeline:
 | xAI | images 5 on 2.0 (`images`), 1 on classic | no | `last_frame` on 1.5 at 480p or 720p | up to 4 (`keyframes` with `timestamp_s`), 1.5 only | `generate_audio: false` on 1.5 | follows the still |
 | BytePlus | Seedream 10 | only from one RGBA input | Seedance `role: last_frame` (identical frames allowed) | no | `generate_audio: false` | `ratio: "1:1"` (2.0); 2.5 is `adaptive` only |
 | fal.ai | Nano Banana 14, Seedream 10, GPT Image 2 16 | GPT Image 2 edit only | every curated video model | no | per model | per model; Veo and LTX are 16:9 only (padded) |
+| QianwenAI Wan | one first frame, optional last frame | no | yes | no | `audio: false` | `ratio: adaptive` |
 
 Every clip is stripped of audio locally after download, whatever was requested
 (`media_mp4.py`: the sound tracks are removed from the MP4 container, so the video samples stay
 byte-identical; the download is kept as `provider-download.mp4`).
+
+### Wan 3.0 direct adapter (verified 2026-11-02)
+
+The [Wan 3.0 guide](https://platform.qianwenai.com/docs/developer-guides/video-generation/wan30-video)
+and [API reference](https://platform.qianwenai.com/docs/api-reference/video-generation/wan30-video/create-task)
+use `input.media` with `first_frame` and optional `last_frame` data URIs.
+ASF defaults to `wan3.0-video` for every tier, using the documented platform endpoint
+`https://maas.qianwenaiapi.com/api/v1`. Both submit and task polling use
+that endpoint with `DASHSCOPE_API_KEY`. ASF sends `ratio=adaptive`, `audio=false`,
+`prompt_extend=false` and `watermark=false`. The model renders 2–30 seconds at
+480p, 720p or 1080p, 30 fps; prompts are limited to 20,000 characters.
+Task IDs and result URLs last 24 hours. No live call or verified USD price is claimed.
+CLI examples: [api-usage.md](api-usage.md#videos-and-resume).
 
 ### Request details worth knowing
 

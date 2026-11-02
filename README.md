@@ -110,7 +110,7 @@ Before 0.4, character animation meant cutting frames out of an image-generated s
 
 What changed:
 
-- **Image generation first.** Every image and clip goes through one command, `route_media.py`: your API key if you configured one (OpenAI, Google Gemini, xAI, BytePlus, fal.ai), else your signed-in Codex or Grok CLI, else code art as the last resort. See [Routes and providers](#routes-and-providers).
+- **Image generation first.** Every image and clip goes through one command, `route_media.py`: your API key if you configured one (OpenAI, Google Gemini, xAI, BytePlus, fal.ai, Alibaba Cloud Wan), else your signed-in Codex or Grok CLI, else code art as the last resort. See [Routes and providers](#routes-and-providers).
 - **One master still per character.** `master_still.py` writes the prompt, generates takes, fixes a near-miss by edit and approves one still (`master.json`).
 - **A whole set from that still.** `sprite_set.py` makes one image-to-video clip per action, gates every take (area, feet, identity, zoom, turning around, edges, background, extra objects, motion, end pose, colour bleed, timing), retakes with fix clauses, keys with a soft matte, registers, picks loops, retimes one-shots, finishes and packages.
 - **HD finish by default, crisp pixel finish on request.** One body scale per character from the master. The pixel finish adds a crisp downscale, a spaced palette of at most 32 colours, a selective outline and binary alpha.
@@ -185,7 +185,7 @@ Every generated image or clip goes through `generate2dmedia/scripts/route_media.
 
 | Order | Route | Images | Video | Used when |
 |---|---|---|---|---|
-| 1 | **API**: a key you configured | OpenAI, Google Gemini, xAI, BytePlus Seedream, fal.ai (reference edits) | xAI, BytePlus Seedance, fal.ai (Kling v3, Veo 3.1, Luma, MiniMax, Wan, Vidu, LTX) | A key is configured. The key is your consent, so there is no per-call question |
+| 1 | **API**: a key you configured | OpenAI, Google Gemini, xAI, BytePlus Seedream, fal.ai (reference edits) | xAI, BytePlus Seedance, fal.ai (Kling v3, Veo 3.1, Luma, MiniMax, Wan, Vidu, LTX), Alibaba Cloud Wan | A key is configured. The key is your consent, so there is no per-call question |
 | 2 | **Local CLI**: your own signed-in Codex or Grok | Codex `image_gen` (up to 8 references); Grok one-shot image or edit | Grok image-to-video in ACP mode (6 or 10 s) | No key, or every API route refused for an account reason (no key, auth, quota, rate limit). Uses your subscription quota, never an API key |
 | 3 | **Code art** (`codeart2d`) | Code-drawn pixel sprites, vector art, FX, tiles | Rigged animation | The last resort: only when no route exists (`no-route`, exit 3) or when you ask for code-drawn art. Always disclosed as code-drawn |
 
@@ -200,6 +200,7 @@ Every generated image or clip goes through `generate2dmedia/scripts/route_media.
 | xAI | `XAI_API_KEY` | generate and edit, 5 references | 1–15 s, 480p–1080p | yes (1.5 at 480p or 720p), up to 4 keyframes | Lite model for drafts |
 | BytePlus ModelArk | `ARK_API_KEY` | Seedream generate and edit, 10 references | Seedance, 4–15 s | yes | activate the models first; no real faces |
 | fal.ai | `FAL_KEY` | reference edits (Nano Banana 2 and Pro, Seedream 5, GPT Image 2) | Kling v3, Veo 3.1, Luma Ray 3.2, MiniMax H3, Wan 3.0, Vidu Q3, LTX-2.5 | yes, on every curated model | Veo and LTX get the still padded to 16:9; the crop box is recorded |
+| QianwenAI Wan | `DASHSCOPE_API_KEY` | none | `wan3.0-video`, 2–30 s, 480p/720p/1080p | yes | documented platform endpoint; `input.media` first/last frames; all tiers use Wan 3.0; price unknown |
 
 Each model's limits are checked against [capabilities.json](./skills/generate2dmedia/references/capabilities.json) before anything is sent; a request the model cannot take is skipped with the reason or adapted with a note (for example a video length snapped to one the model renders). Every clip is published without audio. Details: [route-media.md](./skills/generate2dmedia/references/route-media.md), [api-usage.md](./skills/generate2dmedia/references/api-usage.md), [provider-survey.md](./skills/generate2dmedia/references/provider-survey.md), [cli-routes.md](./skills/generate2dmedia/references/cli-routes.md).
 
@@ -219,6 +220,7 @@ Each provider reads only its own key, from the environment or from one JSON file
   "XAI_API_KEY": "xai-...",
   "ARK_API_KEY": "...",
   "FAL_KEY": "key-id:key-secret",
+  "DASHSCOPE_API_KEY": "sk-...",
   "providers": {"order": {"image": ["gemini", "openai"], "video": ["byteplus"]}}
 }
 ```
@@ -562,7 +564,7 @@ Run from your project root as `python "<skill-dir>/scripts/<tool>.py" ...`. Ever
 | | `scene_layout_guide.py`, `validate_stage.py`, `extract_scene_lights.py`, `edit_locality_check.py` | HD-2D stage guide, aspect-robust battle layout, lights and atmosphere, variant locality |
 | | `build_motion_mask.py`, `scene_motion.py` | Masked motion on a still plate; GOP-aligned loops with decoded-seam QA |
 | generate2dmedia | `route_media.py` | `image`, `video`, `resolve`: API key first, then the local CLIs, then `no-route` |
-| | `media_providers.py` | The five API adapters (OpenAI, Gemini, xAI, BytePlus, fal.ai) behind one interface; `list` prints the models |
+| | `media_providers.py` | The six API adapters (OpenAI, Gemini, xAI, BytePlus, fal.ai, Wan) behind one interface; `list` prints the models |
 | | `forge_doctor.py` | Capability check, configured keys (yes/no) and the route order; `--verify-route` |
 | | `cli_media.py` | Local Codex/Grok CLI image, edit and video routes; `resume`, `adopt --codex-thread`, `batch` |
 | | `generate_media.py`, `media_ledger.py` | One paid API call with a dry run, caps and receipts; ledger summary and settle |
@@ -578,7 +580,7 @@ Run from your project root as `python "<skill-dir>/scripts/<tool>.py" ...`. Ever
 | --- | --- |
 | Every skill | Python 3.10+, `python -m pip install -r requirements.txt` (numpy>=1.26, Pillow>=10.1, scipy>=1.11; scipy is an accelerator with an identical numpy fallback) |
 | Video, sprite sets, packaging and scene loops | ffmpeg 5.1+ with libvpx-vp9 and libx264 on `PATH` |
-| Image and video generation (one of) | An API key for OpenAI, Gemini, xAI, BytePlus or fal.ai ([Setting API keys](#setting-api-keys)), or your own signed-in Codex CLI or Grok CLI |
+| Image and video generation (one of) | An API key for OpenAI, Gemini, xAI, BytePlus, fal.ai or Alibaba Cloud Wan ([Setting API keys](#setting-api-keys)), or your own signed-in Codex CLI or Grok CLI |
 | codeart2d SVG art | `python -m pip install -r requirements-codeart.txt` (resvg-py>=0.5,<0.6), or the resvg-js CLI, or Chrome/Edge. PixelSpec sprites need nothing extra |
 | JS runtimes, `fx_verify.mjs`, scene preview checks | node 22 (optional); `build_scene_preview.py --verify` also uses playwright when present |
 | Contributors | `python -m pip install -r requirements-dev.txt`, then `python -m pytest -q` and `node --test "tests/js/*.test.mjs"` |

@@ -38,7 +38,7 @@
 | 颜色锁定：每对相邻帧的色相翻转（跑步循环） | 352 | **170** |
 | QC：被误判淘汰的好 take | 24 段中 18 段 | **24 段中 0 段** |
 
-- **生图优先：** 所有图片和视频都经过 `route_media.py`：已配置的 API key（OpenAI、Google Gemini、xAI、BytePlus、fal.ai）→ 你已登录的本机 Codex / Grok CLI → 最后才是代码绘制（codeart2d）。
+- **生图优先：** 所有图片和视频都经过 `route_media.py`：已配置的 API key（OpenAI、Google Gemini、xAI、BytePlus、fal.ai、阿里云 Wan）→ 你已登录的本机 Codex / Grok CLI → 最后才是代码绘制（codeart2d）。
 - **一张原画：** `master_still.py` 生成候选、用编辑修正、核准为 `master.json`。
 - **整套动作：** `sprite_set.py` 为每个动作生成一段视频，自动 QC 与重拍、soft matte 抠图（无紫边）、对位、自动挑循环、单次动作自动重新计时、HD 颜色锁定，默认 HD 后期，可选清晰的像素后期，并导出引擎文件。
 - **引擎导出：** animation.json 3.0、PNG atlas、WebM alpha、packed MP4；Godot SpriteFrames / Sprite3D；Aseprite JSON；地图导出 Tiled、Godot、LDtk。
@@ -63,11 +63,13 @@
 
 | 顺序 | 路径 | 何时使用 |
 |---|---|---|
-| 1 | API：已配置的 key（OpenAI、Gemini、xAI、BytePlus、fal.ai：Kling v3、Veo 3.1、Luma、MiniMax、Wan、Vidu、LTX） | 配置了 key 即视为同意，不再逐次询问 |
+| 1 | API：已配置的 key（OpenAI、Gemini、xAI、BytePlus、fal.ai：Kling v3、Veo 3.1、Luma、MiniMax、Wan、Vidu、LTX；阿里云 Wan 直连） | 配置了 key 即视为同意，不再逐次询问 |
 | 2 | 本机 CLI：你已登录的 Codex（`image_gen`）或 Grok（图片、ACP 模式视频） | 没有 key 或 API 因账号原因拒绝时；使用订阅额度 |
 | 3 | 代码绘制（codeart2d） | 最后手段：没有任何路径或你明确要求时 |
 
-Key 放在环境变量（`OPENAI_API_KEY`、`GEMINI_API_KEY`、`XAI_API_KEY`、`ARK_API_KEY`、`FAL_KEY`）或用户配置文件（Windows：`%APPDATA%\agent-sprite-forge\config.json`；macOS／Linux：`~/.config/agent-sprite-forge/config.json`）。详见 [Routes and providers](./README.md#routes-and-providers)。
+Key 放在环境变量（`OPENAI_API_KEY`、`GEMINI_API_KEY`、`XAI_API_KEY`、`ARK_API_KEY`、`FAL_KEY`、`DASHSCOPE_API_KEY`）或用户配置文件（Windows：`%APPDATA%\agent-sprite-forge\config.json`；macOS／Linux：`~/.config/agent-sprite-forge/config.json`）。详见 [Routes and providers](./README.md#routes-and-providers)。
+
+千问AI平台 Wan 使用 `--route wan`，默认使用文档端点 `https://maas.qianwenaiapi.com/api/v1`，所有档位均使用 `wan3.0-video`。支持 2–30 秒、480p／720p／1080p 图生视频，首帧和可选尾帧通过 `input.media` 传入；默认 `ratio=adaptive`、`audio=false`。配置该平台的通用按量付费 `DASHSCOPE_API_KEY` 后即可使用；价格暂记为未知，未进行真实付费调用。端点与配置见 [API 用法](./skills/generate2dmedia/references/api-usage.md#videos-and-resume)。
 
 ## 链接
 

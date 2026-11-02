@@ -22,7 +22,7 @@ user config file, see media_config.py):
   3. none: prints {"status":"no-route","fallback":"codeart2d"} and exits 3. Use codeart2d only
      then, or when the user asks for code-drawn art.
 
---route api or local keeps one group; openai, gemini, xai, byteplus, fal, codex-cli, grok-cli or
+--route api or local keeps one group; openai, gemini, xai, byteplus, fal, wan, codex-cli, grok-cli or
 grok-acp names one route; fal:<endpoint-id> names one fal.ai model. --model picks a model (auto then
 keeps the providers that list it), --tier draft|standard|hero picks each provider's model tier,
 --provider-option KEY=VALUE passes a request field (PROVIDER:KEY=VALUE for one provider only).
@@ -416,8 +416,8 @@ def check_inputs(args: argparse.Namespace) -> list:
         if len(args.reference) > MAX_IMAGE_REFERENCES:
             raise RouteError(f"at most {MAX_IMAGE_REFERENCES} reference images")
     else:
-        if not 1 <= args.duration <= 15:
-            raise RouteError("--duration must be 1..15 seconds")
+        if not 1 <= args.duration <= 30:
+            raise RouteError("--duration must be 1..30 seconds")
         if len(keyframes) > 4:
             raise RouteError("at most 4 keyframes")
     return warnings
@@ -665,7 +665,7 @@ def build_parser() -> argparse.ArgumentParser:
             command.add_argument("--keyframe", action="append", default=[], metavar="PATH@SECONDS",
                                  help="an intermediate frame at a time, up to 4 (xAI grok-imagine-video-1.5 at 480p "
                                       "or 720p; other routes drop them with a note)")
-            command.add_argument("--duration", type=int, default=6, help="seconds, 1..15 (default 6); snapped to the "
+            command.add_argument("--duration", type=int, default=6, help="seconds, 1..30 (default 6); snapped to the "
                                                                          "nearest length the model renders")
             command.add_argument("--resolution", choices=VIDEO_RESOLUTIONS, default="720p")
         command.add_argument("--out-dir", required=True, help="new folder for generated.<ext>, job.json and prompt.txt")

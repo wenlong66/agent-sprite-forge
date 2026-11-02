@@ -21,6 +21,7 @@ writes nothing.
 | `xai` | `XAI_API_KEY` | yes | yes |
 | `byteplus` | `ARK_API_KEY` | yes (Seedream) | yes (Seedance) |
 | `fal` | `FAL_KEY` | reference edits | yes |
+| `wan` | `DASHSCOPE_API_KEY` | no | yes (Wan 3.0) |
 
 Keys come from the environment, else from the user config file
 (`%APPDATA%\agent-sprite-forge\config.json` on Windows,
@@ -32,7 +33,7 @@ or load `.env` files, and a provider never uses another provider's key.
 Each adapter lives in `scripts/media_providers.py` behind one interface: capability
 gating, request building, the submit answer, the status poll, the media download and
 error mapping. Each model's limits and doc URLs are in
-[capabilities.json](capabilities.json) (verified 2026-10-06 against the vendors'
+[capabilities.json](capabilities.json) (verified 2026-10-06, Wan 2026-11-02, against the vendors'
 documentation, not by a live call). `python "<skill-dir>/scripts/media_providers.py" list`
 prints them.
 
@@ -113,9 +114,32 @@ python "<skill-dir>/scripts/generate_media.py" image --provider fal --model fal-
 python "<skill-dir>/scripts/generate_media.py" video --provider xai --model grok-imagine-video-1.5 --reference hero.png --prompt-file idle.txt --duration 6 --resolution 720p --last-frame hero.png --keyframe hero-mid.png@3 --out-dir outputs/idle-api --execute
 python "<skill-dir>/scripts/generate_media.py" video --provider byteplus --model dreamina-seedance-2-0-260128 --reference hero.png --last-frame hero.png --prompt-file idle.txt --duration 6 --out-dir outputs/idle-seedance --execute
 python "<skill-dir>/scripts/generate_media.py" video --provider fal --model fal-ai/kling-video/v3/pro/image-to-video --reference hero.png --last-frame hero.png --prompt-file idle.txt --duration 6 --out-dir outputs/idle-kling --execute
+python "<skill-dir>/scripts/generate_media.py" video --provider wan --model wan3.0-video --reference hero.png --prompt-file idle.txt --duration 6 --resolution 720p --out-dir outputs/idle-wan --execute
 python "<skill-dir>/scripts/generate_media.py" resume --job outputs/idle-api/job.json --timeout 600
 ```
 
+- **QianwenAI Wan 3.0**: `wan3.0-video` for draft, standard and hero, 2 to 30 s,
+  480p, 720p or 1080p, 30 fps. One approved first frame and an optional last frame
+  (same canvas size), sent as data URIs in `input.media` with `type=first_frame`
+  and `type=last_frame`. ASF sends `ratio=adaptive` to follow the input aspect,
+  `audio=false`, `prompt_extend=false` and `watermark=false`. No intermediate
+  keyframes; prompts over 20,000 characters are refused before sending.
+  `--provider-option seed=7` and `prompt_extend=true` set DashScope `parameters`
+  fields; duration, resolution, ratio, audio and media are reserved.
+  The default endpoint is `https://maas.qianwenaiapi.com/api/v1`, as documented
+  in the [Wan 3.0 guide](https://platform.qianwenai.com/docs/developer-guides/video-generation/wan30-video).
+  Use the QianwenAI platform's general
+  pay-as-you-go API key in `DASHSCOPE_API_KEY`, not a Token Plan key. See
+  [API keys](https://platform.qianwenai.com/docs/api-reference/preparation/api-key).
+  The OpenAI chat `/compatible-mode/v1` URL is not the video endpoint.
+  For an explicitly chosen alternative, use the lower-level command with
+  `--base-url <api/v1>` and `--allow-custom-base-url`; resume of a saved job on
+  a different endpoint also needs `--allow-custom-base-url`.
+  The API also supports text-only video and other media modes; ASF uses its
+  approved-first-frame workflow. Smart duration (`-1`) is not exposed: ASF sends
+  a fixed number of seconds so the receipt records the requested duration.
+  Task IDs and result URLs last 24 hours; resume never submits another paid request.
+  Price is unknown (`estimateUsd: null`); the ledger and spend caps still apply.
 - **xAI**: `grok-imagine-video-1.5` takes `--last-frame` and up to 4 `--keyframe
   PATH@SECONDS` (between 0 and the duration, at least 1/3 s apart, same canvas as
   the first frame) at 480p or 720p, and is asked for silent output

@@ -12,7 +12,7 @@ lower-level tools stay available: [`generate_media.py`](api-usage.md) for the pa
      (`grok-imagine-image-2.0`), BytePlus ModelArk (`dola-seedream-5-0-pro-260628`), fal.ai
      (reference edits, `fal-ai/nano-banana-2/edit`);
    - video: xAI (`grok-imagine-video-1.5`), BytePlus ModelArk (Seedance
-     `dreamina-seedance-2-0-260128`), fal.ai (`fal-ai/kling-video/v3/pro/image-to-video`).
+     `dreamina-seedance-2-0-260128`), fal.ai (`fal-ai/kling-video/v3/pro/image-to-video`), Alibaba Cloud Wan (`wan3.0-video`).
 
    A configured key is the owner's consent: the request is sent at once, with no per-call question.
 2. **Local**: the user's own signed-in CLI (subscription quota, never an API key). Images: Codex
@@ -28,7 +28,7 @@ The user's preference comes first: `"providers": {"order": [...]}` in the user c
 lists providers (and, if wanted, local routes) to try before the rest, which keep this order.
 
 `--route auto` (default) walks the order. `--route api` or `--route local` keeps one group;
-`openai`, `gemini`, `xai`, `byteplus`, `fal`, `codex-cli`, `grok-cli` or `grok-acp` names one route,
+`openai`, `gemini`, `xai`, `byteplus`, `fal`, `wan`, `codex-cli`, `grok-cli` or `grok-acp` names one route,
 and `fal:<endpoint-id>` one fal.ai model. Every API route is checked against its model's record in
 [capabilities.json](capabilities.json) before anything runs. A route that cannot take the request
 is skipped with the reason: too many references, a resolution it does not render, a first frame it
@@ -60,6 +60,7 @@ python "<skill-dir>/scripts/route_media.py" image --prompt-file prompts/master.t
 python "<skill-dir>/scripts/route_media.py" image --prompt-file prompts/master.txt --reference art/identity.png --route gemini --tier hero --out-dir outputs/hero-master-pro
 python "<skill-dir>/scripts/route_media.py" video --prompt-file prompts/idle.txt --reference art/hero-master.png --last-frame art/hero-master.png --duration 6 --resolution 720p --out-dir outputs/hero-idle
 python "<skill-dir>/scripts/route_media.py" video --prompt-file prompts/attack.txt --reference art/hero-master.png --last-frame art/hero-master.png --route fal:fal-ai/veo3.1/first-last-frame-to-video --provider-option fal:safety_tolerance="5" --out-dir outputs/hero-attack
+python "<skill-dir>/scripts/route_media.py" video --route wan --prompt-file prompts/idle.txt --reference art/hero-master.png --duration 6 --resolution 720p --out-dir outputs/hero-wan
 python "<skill-dir>/scripts/route_media.py" video --prompt-file prompts/run.txt --reference art/hero-master.png --tier draft --out-dir outputs/hero-run --dry-run
 ```
 
@@ -71,7 +72,7 @@ python "<skill-dir>/scripts/route_media.py" video --prompt-file prompts/run.txt 
 | `--transparent` | image: a native transparent background where the model has one (OpenAI GPT Image); elsewhere a note says to key the backdrop |
 | `--last-frame` | video: pins the end frame (same canvas as the first frame) where the route can; the result says `lastFrameUsed` |
 | `--keyframe PATH@SECONDS` | video: an intermediate frame, up to 4 (xAI `grok-imagine-video-1.5` at 480p or 720p; other routes drop them with a note) |
-| `--duration`, `--resolution` | video: 1..15 seconds (default 6, snapped per model; Grok (local CLI) 6 or 10); `480p`, `720p` (default) or `1080p` |
+| `--duration`, `--resolution` | video: 1..30 seconds (default 6, snapped per model; Grok (local CLI) 6 or 10); `480p`, `720p` (default) or `1080p` |
 | `--model` | the API model (fal.ai: its endpoint id); with `auto`, only providers that list it are tried |
 | `--tier` | `draft`, `standard` (default) or `hero`: each provider's model for that tier, for example Gemini Pro for hero masters and xAI 1.5 Lite for draft clips |
 | `--provider-option [PROVIDER:]KEY=VALUE` | a request field passed as is (VALUE is JSON when it parses: `seed=7`, `safety_tolerance="5"`); `PROVIDER:` limits it to one provider; dotted keys nest; fields ASF sets itself are refused |
@@ -89,7 +90,7 @@ Success, exit 0 (one ASCII JSON line; the first five keys are the contract):
 {"status":"ok","route":"api:openai","artifact":"outputs/hero-master/generated.png","sha256":"<64 hex>","estimateUsd":null,"kind":"image","label":"OpenAI API (gpt-image-2.5-sunburst)","model":"gpt-image-2.5-sunburst","job":"outputs/hero-master/job.json"}
 ```
 
-- `route` is `api:openai`, `api:gemini`, `api:xai`, `api:byteplus`, `api:fal`, `local:codex-cli`,
+- `route` is `api:openai`, `api:gemini`, `api:xai`, `api:byteplus`, `api:fal`, `api:wan`, `local:codex-cli`,
   `local:grok-cli` or `local:grok-acp`.
 - `estimateUsd` is the list-price estimate from [prices.json](prices.json), `null` when no verified
   price row exists, `0.0` for a local route (subscription quota).
@@ -118,6 +119,7 @@ Each provider reads only its own key, the vendor's official variable name:
 | xAI | `XAI_API_KEY` | console.x.ai |
 | BytePlus ModelArk | `ARK_API_KEY` | console.byteplus.com, ModelArk; activate the Seedream and Seedance models first |
 | fal.ai | `FAL_KEY` (`key-id:key-secret`) | fal.ai/dashboard/keys |
+| Alibaba Cloud Wan | `DASHSCOPE_API_KEY` | QianwenAI platform general API key (`sk-ws-...`, legacy `sk-...`); not a Token Plan key |
 
 A key comes from the environment, or from one JSON file in the user's own configuration folder,
 never inside a project; the environment wins over the file:
@@ -134,6 +136,7 @@ never inside a project; the environment wins over the file:
   "XAI_API_KEY": "xai-...",
   "ARK_API_KEY": "...",
   "FAL_KEY": "key-id:key-secret",
+  "DASHSCOPE_API_KEY": "sk-...",
   "models": {"gemini-image-hero": "gemini-3-pro-image", "xai-video-draft": "grok-imagine-video-1.5-lite", "fal-video": "luma/agent/ray/v3.2/image-to-video"},
   "providers": {"order": {"image": ["gemini", "openai"], "video": ["byteplus"]}}
 }
@@ -156,6 +159,7 @@ back to another provider's key. `forge_doctor.py` reports each provider as confi
 | xAI | generate and edit, 5 references | 1 to 15 s, 480p to 1080p | yes, 1.5 at 480p or 720p; up to 4 keyframes | silent generation on 1.5; Lite is the draft model |
 | BytePlus ModelArk | Seedream generate and edit, 10 references | Seedance 4 to 15 s | yes, any resolution (identical frames allowed) | first frame 300 to 6000 px; no real faces |
 | fal.ai | reference edits only | Kling, Veo 3.1, Luma, MiniMax, Wan, Vidu, LTX | yes on every curated model | inputs go to the fal CDN first; Veo and LTX are padded to 16:9 |
+| QianwenAI Wan | none | Wan 3.0, 2 to 30 s, 480p/720p/1080p | yes | documented platform endpoint; `input.media` first/last frames; `ratio=adaptive`, `audio=false`; unpriced |
 
 The full survey, with the shutdown dates, is [provider-survey.md](provider-survey.md).
 

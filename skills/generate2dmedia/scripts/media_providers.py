@@ -7,7 +7,8 @@
 Providers, each with its own key (never another provider's): OpenAI images (OPENAI_API_KEY);
 Google Gemini images (GOOGLE_API_KEY or GEMINI_API_KEY; GOOGLE_API_KEY wins); xAI images and
 video (XAI_API_KEY); BytePlus ModelArk, Seedream images and Seedance video (ARK_API_KEY); fal.ai,
-an aggregator with curated image edits and image-to-video models (FAL_KEY).
+an aggregator with curated image edits and image-to-video models (FAL_KEY); Alibaba Cloud Wan
+image-to-video through DashScope (DASHSCOPE_API_KEY).
 
 Every model has a capability record in references/capabilities.json, stamped with verifiedAt and
 the vendor's doc URLs. Every adapter implements the same steps:
@@ -45,7 +46,7 @@ import media_config  # noqa: E402  (sibling in this skill's scripts/)
 
 CAPABILITIES_PATH = HERE.parent / "references" / "capabilities.json"
 CAPABILITIES_SCHEMA = "generate2dmedia.capabilities.v1"
-ORDER = ("openai", "gemini", "xai", "byteplus", "fal")
+ORDER = ("openai", "gemini", "xai", "byteplus", "fal", "wan")
 KINDS = ("image", "video")
 TIERS = ("draft", "standard", "hero")
 VIDEO_RESOLUTIONS = ("480p", "720p", "1080p")
@@ -1276,13 +1277,103 @@ class FalAdapter(Adapter):
         return None
 
 
+# --------------------------------------------------------------------------- QianwenAI Wan (DashScope protocol)
+
+class WanAdapter(Adapter):
+    name = "wan"
+    reserved = frozenset({"model", "input", "parameters", "prompt", "media", "duration", "resolution", "ratio", "audio"})
+
+    def auth_meta(self):
+        return {**super().auth_meta(), "extraHeaders": {"X-DashScope-Async": "enable"}}
+
+    def _check_video(self, req, record, warnings):
+        super()._check_video(req, record, warnings)
+        if len(req.prompt) > 20000:
+            raise refuse("Wan 3.0 prompts must be at most 20000 characters (longer prompts are truncated by the API)")
+
+    def build(self, req, base):
+        parameters = {"resolution": req.resolution.upper(), "duration": req.duration, "ratio": "adaptive",
+                      "audio": False, "prompt_extend": False, "watermark": False}
+        media = [{"type": "first_frame", "url": data_uri(*req.references[0])}]
+        if req.last_frame is not None:
+            media.append({"type": "last_frame", "url": data_uri(*req.last_frame)})
+        apply_options(parameters, req.options, self.reserved)
+        fields = {"model": req.model, "input": {"prompt": req.prompt, "media": media},
+                  "parameters": parameters}
+        pricing = {"unit": "output_second", "quantity": req.duration,
+                   "qualifiers": {"resolution": req.resolution}, "inputs": None,
+                   "note": "Wan price depends on model, resolution and audio; no verified USD price row"}
+        return Built(base + "/services/aigc/video-generation/video-synthesis", json.dumps(fields).encode(),
+                     "application/json", {"model": req.model, **parameters, "frames": [m["type"] for m in media]}, pricing)
+
+    def refusal(self, result):
+        if result.get("code"):
+            fields = self._error_fields(result)
+            raise MediaError("Wan refused the request; no regeneration attempted",
+                             code=self.classify(200, fields) or "failed", sent=True, provider=fields)
+
+    def _error_fields(self, output, status=200):
+        code = str(output.get("code") or "unknown")
+        for secret in media_config.known_secrets():
+            code = code.replace(secret, "redacted")
+        return {"httpStatus": int(status), "code": _short(code)}
+
+    def read_submit(self, result, kind):
+        output = result.get("output") if isinstance(result.get("output"), dict) else {}
+        rid = output.get("task_id")
+        if not isinstance(rid, str) or not REQUEST_ID.fullmatch(rid):
+            raise MediaError("Submit response omitted a valid task id; check the QianwenAI platform console before any new "
+                             "submission", code="bad_response")
+        return JobRef(rid)
+
+    def status_url(self, job, base):
+        return base + "/tasks/" + job["requestId"]
+
+    def status(self, result, job, http_status=None):
+        self.refusal(result)
+        output = result.get("output") if isinstance(result.get("output"), dict) else {}
+        state = output.get("task_status")
+        if state in ("PENDING", "RUNNING"):
+            return "pending", None
+        if state == "SUCCEEDED":
+            if not _https(output.get("video_url")):
+                raise MediaError("Completed Wan task has no downloadable video URL", code="bad_response")
+            usage = result.get("usage") if isinstance(result.get("usage"), dict) else {}
+            return "done", MediaRef(url=output["video_url"],
+                                    duration=usage.get("output_video_duration", usage.get("duration")))
+        if state in ("FAILED", "CANCELED", "UNKNOWN"):
+            terminal = "expired" if state == "UNKNOWN" else "failed"
+            fields = self._error_fields(output, http_status or 200)
+            raise JobFailure("Wan task ended; no regeneration attempted", status=terminal,
+                             code=self.classify(200, fields) or terminal, provider=fields)
+        raise MediaError("Unknown Wan task status; task id retained, no regeneration attempted", code="bad_response")
+
+    def classify(self, status, fields):
+        code = str(fields.get("code", "")).lower()
+        if any(word in code for word in ("datainspection", "data_inspection", "ipinfringement", "forbidden.label")):
+            return "moderation"
+        if code in ("invalidapikey", "invalid_api_key") or status == 401:
+            return "auth"
+        if any(word in code for word in ("arrearage", "allocationquota", "insufficient_quota")):
+            return "quota"
+        if any(word in code for word in ("throttling", "limit_requests", "limit_burst_rate")) or status == 429:
+            return "rate_limit"
+        if any(word in code for word in ("accessdenied", "access_denied", "modelnotfound", "model_not_found")):
+            return "entitlement"
+        if "invalidparameter" in code:
+            return "invalid_request"
+        if "internalerror" in code or "serviceunavailable" in code:
+            return "provider_error"
+        return None
+
+
 ADAPTER_CLASSES = {"openai": OpenAIAdapter, "gemini": GeminiAdapter, "xai": XAIAdapter, "byteplus": BytePlusAdapter,
-                   "fal": FalAdapter}
+                   "fal": FalAdapter, "wan": WanAdapter}
 _ADAPTERS = {}
 
 
 def adapter(name) -> Adapter:
-    """The adapter of a provider (openai, gemini, xai, byteplus or fal)."""
+    """The adapter of a provider (openai, gemini, xai, byteplus, fal or wan)."""
     if name not in _ADAPTERS:
         record = capabilities()["providers"].get(name)
         if name not in ADAPTER_CLASSES or record is None:

@@ -15,7 +15,7 @@ folder, outside every project:
 
 Each provider has its own key variables (the vendors' official names): OpenAI OPENAI_API_KEY;
 Google Gemini GOOGLE_API_KEY or GEMINI_API_KEY (GOOGLE_API_KEY wins when both are set, as in
-Google's own SDK); xAI XAI_API_KEY; BytePlus ModelArk ARK_API_KEY; fal.ai FAL_KEY. A provider
+Google's own SDK); xAI XAI_API_KEY; BytePlus ModelArk ARK_API_KEY; fal.ai FAL_KEY; Alibaba Cloud Wan DASHSCOPE_API_KEY. A provider
 never falls back to another provider's key. The environment wins over the file.
 
 Every field is optional; unknown fields are ignored. "models" slots are <provider>-<kind> (the
@@ -45,6 +45,7 @@ PROVIDER_KEYS = {
     "xai": ("XAI_API_KEY",),
     "byteplus": ("ARK_API_KEY",),
     "fal": ("FAL_KEY",),
+    "wan": ("DASHSCOPE_API_KEY",),
 }
 # Provider -> how to name its key to a person (route_media's "no ... configured" reasons).
 PROVIDERS = {name: " or ".join(names) for name, names in PROVIDER_KEYS.items()}
@@ -60,6 +61,7 @@ MODEL_DEFAULTS = {
     "byteplus-video": "dreamina-seedance-2-0-260128",
     "fal-image": "fal-ai/nano-banana-2/edit",
     "fal-video": "fal-ai/kling-video/v3/pro/image-to-video",
+    "wan-video": "wan3.0-video",
 }
 LOCAL_ROUTES = ("codex-cli", "grok-cli", "grok-acp")
 MODEL_ID = re.compile(r"[A-Za-z0-9_.:/-]{1,160}")

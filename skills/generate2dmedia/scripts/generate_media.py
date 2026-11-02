@@ -3,14 +3,15 @@
 
 Providers (media_providers.py, contracts checked against the vendors' docs on
 2026-10-06): OpenAI and Google Gemini images; xAI images and video; BytePlus
-ModelArk Seedream images and Seedance video; fal.ai image edits and video.
+ModelArk Seedream images and Seedance video; fal.ai image edits and video;
+Alibaba Cloud Wan video (docs checked 2026-11-02).
 Generation is separate from asset QA. Each executed request is first reserved
 in <project>/.forge/ledger.jsonl (opt-in spend caps, duplicate guard), then
 committed with its outcome, the provider's job id and the artifact's sha256.
 An asynchronous job's id is saved before polling and its media is downloaded
 as soon as it is done; every clip is published without audio. Keys come from
 each provider's own variables (OPENAI_API_KEY, GOOGLE_API_KEY or
-GEMINI_API_KEY, XAI_API_KEY, ARK_API_KEY, FAL_KEY) or the user config file
+GEMINI_API_KEY, XAI_API_KEY, ARK_API_KEY, FAL_KEY, DASHSCOPE_API_KEY) or the user config file
 (media_config.py); route_media.py is the entry point that sends at once when
 a key is configured. Uses stdlib HTTP and Pillow.
 """
