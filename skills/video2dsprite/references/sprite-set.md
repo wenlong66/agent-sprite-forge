@@ -90,6 +90,9 @@ agent can read and edit `motion`, `negatives` and `gates` in `set_plan.json` bef
    waits, and a clip saved into `takes/tNN/media/` (any .mp4, .webm, .mov) is adopted on the next
    run, so a host with its own image-to-video tool can feed the set by hand. A clip already in
    that folder is never generated again.
+   If the API accepted a task but polling failed, the action waits for that saved task instead of
+   submitting another take. Run `generate2dmedia/scripts/generate_media.py resume --job
+   takes/tNN/media/job.json`, then run the set again to adopt the downloaded clip.
 4. **Key.** `video2dsprite.py process --matte soft --reference job/master.png --key <key>` (plus
    `--matte-profile` when the plan has one, so every clip of the character is keyed the same way).
 5. **Gates.** `takes/tNN/qc.json` (below).

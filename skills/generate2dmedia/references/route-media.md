@@ -126,7 +126,7 @@ never inside a project; the environment wins over the file:
 
 | System | File |
 |---|---|
-| Windows | `%APPDATA%\agent-sprite-forge\config.json` |
+| Windows | `%USERPROFILE%\agent-sprite-forge\config.json` |
 | macOS, Linux | `$XDG_CONFIG_HOME/agent-sprite-forge/config.json`, default `~/.config/agent-sprite-forge/config.json` |
 
 ```json

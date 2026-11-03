@@ -24,7 +24,7 @@ writes nothing.
 | `wan` | `DASHSCOPE_API_KEY` | no | yes (Wan 3.0) |
 
 Keys come from the environment, else from the user config file
-(`%APPDATA%\agent-sprite-forge\config.json` on Windows,
+(`%USERPROFILE%\agent-sprite-forge\config.json` on Windows,
 `~/.config/agent-sprite-forge/config.json` elsewhere; see
 [route-media.md](route-media.md)). They are read in-process and never printed,
 logged or written; this tool doesn't search the filesystem for other credentials

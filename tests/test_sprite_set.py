@@ -796,6 +796,29 @@ def test_no_route_supplied_clip_unpinned_route_and_best_window(ss, fake, tmp_pat
     assert_no_absolute_paths(tmp_path / "set")
 
 
+def test_poll_error_waits_for_the_existing_task_then_adopts_its_clip(ss, fake, tmp_path):
+    master = write_master(tmp_path / "art", fake, ss)
+    plan = tmp_path / "set" / "set_plan.json"
+    cli("plan", "--master", master, "--output-dir", plan.parent, "--actions", "idle", "--formats", "png")
+    runner = ss.SetRunner(plan)
+    take = runner.open_take("idle")
+    take["status"] = runner.astate("idle")["status"] = "error"
+    media = runner.root / take["dir"] / "media"
+    media.mkdir()
+    (media / "job.json").write_text(json.dumps({"provider": "wan", "requestId": "existing-task", "status": "interrupted"}))
+    runner.save()
+    assert not runner.wants_take("idle", 3, {})
+    runner = ss.SetRunner(plan)
+    assert not runner.wants_take("idle", 3, {})
+    runner.astate("idle")["round"] += 1
+    assert runner.wants_take("idle", 3, {})
+    runner.astate("idle")["round"] -= 1
+    (media / "generated.mp4").write_bytes(b"downloaded clip")
+    assert runner.wants_take("idle", 3, {})
+    assert len(runner.astate("idle")["takes"]) == 1
+    assert runner.astate("idle")["takes"][0]["route"] == "api:wan"
+
+
 def test_provider_errors_stop_the_action_for_this_run_only(ss, fake, tmp_path):
     master = write_master(tmp_path / "art", fake, ss)
     plan_path = tmp_path / "set" / "set_plan.json"

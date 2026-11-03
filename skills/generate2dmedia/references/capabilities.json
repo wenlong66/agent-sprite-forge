@@ -382,7 +382,7 @@
       "label": "QianwenAI Wan API",
       "keyEnv": ["DASHSCOPE_API_KEY"],
       "apiBase": "https://maas.qianwenaiapi.com/api/v1",
-      "auth": "Authorization: Bearer <key>; X-DashScope-Async: enable",
+      "auth": "Authorization: Bearer <key>; X-DashScope-Async: enable (task submission only)",
       "kinds": ["video"],
       "verifiedAt": "2026-11-02",
       "docs": ["https://platform.qianwenai.com/docs/api-reference/video-generation/wan30-video/create-task", "https://platform.qianwenai.com/docs/api-reference/video-generation/wan30-video/query-result", "https://platform.qianwenai.com/docs/developer-guides/video-generation/wan30-video", "https://platform.qianwenai.com/docs/api-reference/preparation/error-messages", "https://platform.qianwenai.com/docs/api-reference/preparation/api-key"],

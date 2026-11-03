@@ -2318,6 +2318,17 @@ class SetRunner:
         if st.get("chosen") or st["status"] == "failed" or errors.get(ident, 0) >= 2:
             return False
         last = st["takes"][-1] if st["takes"] else None
+        if last and last["round"] == st["round"] and last["status"] == "error":
+            media = self.root / last["dir"] / "media"
+            saved = forge_core.read_json(media / "job.json") if (media / "job.json").is_file() else {}
+            if _find_clip(media) is not None:
+                last["status"] = "open"
+                if saved.get("provider"):
+                    last["route"] = "api:" + saved["provider"]
+            elif saved.get("requestId") and saved.get("status") not in ("failed", "expired", "not_sent"):
+                st["message"] = f"resume the existing provider task from {self.rel(media / 'job.json')}; no new submission"
+                self.save()
+                return False
         if last and last["round"] == st["round"] and last["status"] in ("open", "generated", "no-route"):
             return True
         decided = [t for t in st["takes"] if t["round"] == st["round"] and t["status"] in ("kept", "rejected")]

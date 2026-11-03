@@ -41,6 +41,7 @@ def test_generation_request_poll_download_and_ledger(project, http, key, capsys,
     post, = http.calls("POST")
     assert post.headers["authorization"] == "Bearer " + KEYS["DASHSCOPE_API_KEY"]
     assert post.headers["x-dashscope-async"] == "enable"
+    assert all("x-dashscope-async" not in call.headers for call in http.calls("GET"))
     params = {"resolution": "720P", "duration": 6, "ratio": "adaptive", "audio": False,
               "prompt_extend": False, "watermark": False, "seed": 7}
     uri = "data:image/png;base64," + base64.b64encode((project / "still.png").read_bytes()).decode()

@@ -209,7 +209,7 @@ python "<skill-dir>/scripts/sprite_set.py" report --plan art/aria-set/set_plan.j
 
 | 系統 | 設定檔 |
 |---|---|
-| Windows | `%APPDATA%\agent-sprite-forge\config.json` |
+| Windows | `%USERPROFILE%\agent-sprite-forge\config.json` |
 | macOS、Linux | `~/.config/agent-sprite-forge/config.json`（或 `$XDG_CONFIG_HOME/agent-sprite-forge/config.json`） |
 
 ```json

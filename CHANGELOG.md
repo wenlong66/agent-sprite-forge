@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Windows user config moves to `%USERPROFILE%\agent-sprite-forge\config.json`, outside AppData. Move an existing config to this path; the old AppData location is no longer read. Environment keys still take precedence.
+
 ## 0.4.0 — 2026-10-06 — the big upgrade
 
 One integrated release of the five skills (plugin version `0.4.0`). Not yet tagged; tagging and publishing are the owner's. Measured numbers come from the repository's fixtures and the 2026-10-06 live runs ([docs/validation-2026-10-06.md](./docs/validation-2026-10-06.md)); what the measurements do not prove is in [docs/known-limitations.md](./docs/known-limitations.md).

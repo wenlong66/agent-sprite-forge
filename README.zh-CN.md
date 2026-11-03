@@ -67,7 +67,9 @@
 | 2 | 本机 CLI：你已登录的 Codex（`image_gen`）或 Grok（图片、ACP 模式视频） | 没有 key 或 API 因账号原因拒绝时；使用订阅额度 |
 | 3 | 代码绘制（codeart2d） | 最后手段：没有任何路径或你明确要求时 |
 
-Key 放在环境变量（`OPENAI_API_KEY`、`GEMINI_API_KEY`、`XAI_API_KEY`、`ARK_API_KEY`、`FAL_KEY`、`DASHSCOPE_API_KEY`）或用户配置文件（Windows：`%APPDATA%\agent-sprite-forge\config.json`；macOS／Linux：`~/.config/agent-sprite-forge/config.json`）。详见 [Routes and providers](./README.md#routes-and-providers)。
+Key 放在环境变量（`OPENAI_API_KEY`、`GEMINI_API_KEY`、`XAI_API_KEY`、`ARK_API_KEY`、`FAL_KEY`、`DASHSCOPE_API_KEY`）或用户配置文件（Windows：`%USERPROFILE%\agent-sprite-forge\config.json`；macOS／Linux：`~/.config/agent-sprite-forge/config.json`）。详见 [Routes and providers](./README.md#routes-and-providers)。
+
+Windows 旧配置请从 AppData 移到 `%USERPROFILE%\agent-sprite-forge\config.json`；程序不再读取旧位置。
 
 千问AI平台 Wan 使用 `--route wan`，默认使用文档端点 `https://maas.qianwenaiapi.com/api/v1`，所有档位均使用 `wan3.0-video`。支持 2–30 秒、480p／720p／1080p 图生视频，首帧和可选尾帧通过 `input.media` 传入；默认 `ratio=adaptive`、`audio=false`。配置该平台的通用按量付费 `DASHSCOPE_API_KEY` 后即可使用；价格暂记为未知，未进行真实付费调用。端点与配置见 [API 用法](./skills/generate2dmedia/references/api-usage.md#videos-and-resume)。
 

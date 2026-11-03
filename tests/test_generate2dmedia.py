@@ -46,6 +46,7 @@ def hermetic(tmp_path, monkeypatch):
     """Never see real credentials, a real user config file or caps; never write a ledger into the repo."""
     for name in ("OPENAI_API_KEY", "XAI_API_KEY", ledger_mod.MAX_PAID_ENV):
         monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("USERPROFILE", str(tmp_path / "home"))
     monkeypatch.setenv("APPDATA", str(tmp_path / "appdata"))
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
     work = tmp_path / "cwd"

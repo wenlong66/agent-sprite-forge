@@ -152,6 +152,7 @@ def project(tmp_path, monkeypatch):
     for name in (*media_config.KEY_VARIABLES, "CODEX_API_KEY", media_ledger.MAX_PAID_ENV, route_media.FAKE_ENV,
                  *media_ledger.SESSION_ENV.values()):
         monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("USERPROFILE", str(tmp_path / "home"))
     monkeypatch.setenv("APPDATA", str(tmp_path / "appdata"))
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
     monkeypatch.setenv("CODEX_HOME", str(tmp_path / "codex-home"))

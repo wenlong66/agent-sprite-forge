@@ -722,7 +722,7 @@ def _call(adapter, transport, method, url, key, body=None, content_type="applica
     """One request with the provider's credential header; the adapter refines the outcome code of an
     HTTP error (a 5xx stays provider_error, so a possibly processed POST is never called refused)."""
     meta = {} if meta is None else meta
-    meta.update(adapter.auth_meta())
+    meta.update(adapter.auth_meta(method))
     try:
         return transport.api(method, url, key, body, content_type, timeout=timeout, meta=meta)
     except MediaError as exc:

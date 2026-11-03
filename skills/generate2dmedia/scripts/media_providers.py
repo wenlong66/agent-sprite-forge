@@ -398,7 +398,7 @@ class Adapter:
     def key_env(self):
         return media_config.PROVIDERS[self.name]
 
-    def auth_meta(self):
+    def auth_meta(self, method="POST"):
         return {"authHeader": self.auth_header, "authScheme": self.auth_scheme}
 
     def models(self, kind=None):
@@ -1283,8 +1283,11 @@ class WanAdapter(Adapter):
     name = "wan"
     reserved = frozenset({"model", "input", "parameters", "prompt", "media", "duration", "resolution", "ratio", "audio"})
 
-    def auth_meta(self):
-        return {**super().auth_meta(), "extraHeaders": {"X-DashScope-Async": "enable"}}
+    def auth_meta(self, method="POST"):
+        meta = super().auth_meta(method)
+        if method == "POST":
+            meta["extraHeaders"] = {"X-DashScope-Async": "enable"}
+        return meta
 
     def _check_video(self, req, record, warnings):
         super()._check_video(req, record, warnings)

@@ -4,7 +4,7 @@
 A key comes from the environment first, then from one JSON file in the user's own configuration
 folder, outside every project:
 
-  Windows    %APPDATA%\\agent-sprite-forge\\config.json
+  Windows    %USERPROFILE%\\agent-sprite-forge\\config.json
   elsewhere  $XDG_CONFIG_HOME/agent-sprite-forge/config.json (default ~/.config/agent-sprite-forge/config.json)
 
   {"OPENAI_API_KEY": "sk-...", "GEMINI_API_KEY": "...", "XAI_API_KEY": "xai-...",
@@ -68,12 +68,12 @@ MODEL_ID = re.compile(r"[A-Za-z0-9_.:/-]{1,160}")
 
 
 def config_path(environ: dict | None = None) -> Path:
-    """The user-level config file: %APPDATA%\\agent-sprite-forge\\config.json on Windows,
+    """The user-level config file: %USERPROFILE%\\agent-sprite-forge\\config.json on Windows,
     $XDG_CONFIG_HOME (default ~/.config)/agent-sprite-forge/config.json elsewhere."""
     env = os.environ if environ is None else environ
     if os.name == "nt":
-        base = (env.get("APPDATA") or "").strip()
-        root = Path(base) if base else Path.home() / "AppData" / "Roaming"
+        base = (env.get("USERPROFILE") or "").strip()
+        root = Path(base) if base else Path.home()
     else:
         base = (env.get("XDG_CONFIG_HOME") or "").strip()
         root = Path(base) if base and os.path.isabs(base) else Path.home() / ".config"

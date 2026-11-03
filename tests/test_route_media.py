@@ -1,7 +1,7 @@
 """route_media.py: the one entry point for generated images and clips (owner decision 2026-10-06).
 
 Offline: API calls go to fake transports, local routes to the fake Codex and Grok CLIs of
-tests/fixtures/fake_cli, and the user config folder (APPDATA / XDG_CONFIG_HOME) and the CLI homes
+tests/fixtures/fake_cli, and the user config folder (USERPROFILE / XDG_CONFIG_HOME) and the CLI homes
 point at temporary folders, so no real key, config file, credential or CLI is ever read or run.
 """
 from __future__ import annotations
@@ -78,6 +78,7 @@ def env(tmp_path, monkeypatch):
                  "FAKE_CLI_MODE", "FAKE_THREAD_ID", "FAKE_SESSION_ID", "FAKE_CODEX_VERSION", "FAKE_GROK_VERSION",
                  "FAKE_GROK_DURATIONS", "FAKE_TOOL_ERROR", *media_ledger.SESSION_ENV.values()):
         monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("USERPROFILE", str(tmp_path / "home"))
     monkeypatch.setenv("APPDATA", str(tmp_path / "appdata"))
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
     monkeypatch.setenv("CODEX_HOME", str(tmp_path / "codex-home"))
@@ -142,10 +143,16 @@ def test_help_works_under_cp1252():
 
 
 def test_config_path_is_user_level(tmp_path, monkeypatch):
-    """%APPDATA%\\agent-sprite-forge\\config.json on Windows, $XDG_CONFIG_HOME (default ~/.config) elsewhere."""
+    """Windows uses the user profile, unaffected by AppData redirection; elsewhere XDG still applies."""
     if os.name == "nt":
+        monkeypatch.setenv("USERPROFILE", str(tmp_path / "home"))
         monkeypatch.setenv("APPDATA", str(tmp_path / "roaming"))
-        assert media_config.config_path() == tmp_path / "roaming" / "agent-sprite-forge" / "config.json"
+        expected = tmp_path / "home" / "agent-sprite-forge" / "config.json"
+        assert media_config.config_path() == expected
+        assert media_config.config_path({"USERPROFILE": str(tmp_path / "home"), "APPDATA": "redirected"}) == expected
+        (tmp_path / "roaming" / "agent-sprite-forge").mkdir(parents=True)
+        (tmp_path / "roaming" / "agent-sprite-forge" / "config.json").write_text('{"old": true}', encoding="utf-8")
+        assert media_config.load_config() == ({}, None)
     else:
         monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
         assert media_config.config_path() == tmp_path / "xdg" / "agent-sprite-forge" / "config.json"
@@ -437,7 +444,7 @@ def test_route_media_doc_matches_the_tool():
         verb = command.split('route_media.py" ', 1)[1].split()[0]
         options = set(re.findall(r"\s(--[a-z-]+)", command))
         assert options <= set(verbs[verb]._option_string_actions), command
-    for phrase in (r"%APPDATA%\agent-sprite-forge\config.json", "~/.config/agent-sprite-forge/config.json",
+    for phrase in (r"%USERPROFILE%\agent-sprite-forge\config.json", "~/.config/agent-sprite-forge/config.json",
                    '{"status":"no-route","fallback":"codeart2d"}', route_media.FAKE_ENV, "estimateUsd"):
         assert phrase in text, phrase
 

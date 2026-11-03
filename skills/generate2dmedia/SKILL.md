@@ -44,7 +44,7 @@ Success prints one ASCII JSON line and exits 0: `{"status":"ok","route":"api:ope
 
 ## Keys
 
-Each provider reads only its own key: `OPENAI_API_KEY`, `GOOGLE_API_KEY` or `GEMINI_API_KEY` (`GOOGLE_API_KEY` wins), `XAI_API_KEY`, `ARK_API_KEY` (BytePlus ModelArk), `FAL_KEY` (fal.ai) and `DASHSCOPE_API_KEY` (Wan), from the environment or from the user config file, never from a project: `%APPDATA%\agent-sprite-forge\config.json` on Windows, `~/.config/agent-sprite-forge/config.json` elsewhere (`$XDG_CONFIG_HOME` when set), as `{"OPENAI_API_KEY": "...", "FAL_KEY": "..."}` with optional `"models"` and `"providers": {"order": [...]}`. Never print, log, commit or paste a key, and never put one in a prompt. A Codex or Grok sign-in is never an API key.
+Each provider reads only its own key: `OPENAI_API_KEY`, `GOOGLE_API_KEY` or `GEMINI_API_KEY` (`GOOGLE_API_KEY` wins), `XAI_API_KEY`, `ARK_API_KEY` (BytePlus ModelArk), `FAL_KEY` (fal.ai) and `DASHSCOPE_API_KEY` (Wan), from the environment or from the user config file, never from a project: `%USERPROFILE%\agent-sprite-forge\config.json` on Windows, `~/.config/agent-sprite-forge/config.json` elsewhere (`$XDG_CONFIG_HOME` when set), as `{"OPENAI_API_KEY": "...", "FAL_KEY": "..."}` with optional `"models"` and `"providers": {"order": [...]}`. Never print, log, commit or paste a key, and never put one in a prompt. A Codex or Grok sign-in is never an API key.
 
 ## Spend and the ledger
 

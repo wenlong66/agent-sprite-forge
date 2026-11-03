@@ -210,7 +210,7 @@ Each provider reads only its own key, from the environment or from one JSON file
 
 | System | Config file |
 |---|---|
-| Windows | `%APPDATA%\agent-sprite-forge\config.json` |
+| Windows | `%USERPROFILE%\agent-sprite-forge\config.json` |
 | macOS, Linux | `~/.config/agent-sprite-forge/config.json` (or `$XDG_CONFIG_HOME/agent-sprite-forge/config.json`) |
 
 ```json
@@ -224,6 +224,8 @@ Each provider reads only its own key, from the environment or from one JSON file
   "providers": {"order": {"image": ["gemini", "openai"], "video": ["byteplus"]}}
 }
 ```
+
+On Windows, move an existing AppData config to `%USERPROFILE%\agent-sprite-forge\config.json`; the old AppData location is no longer read.
 
 Every field is optional. `providers.order` puts your favourite providers first; `models` picks a model per provider and tier. Keys are read in-process only: never printed, logged, written, passed on a command line or handed to a child process, and a provider never uses another provider's key. On macOS and Linux keep the file private (`chmod 600`).
 

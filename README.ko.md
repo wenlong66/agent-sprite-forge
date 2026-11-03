@@ -67,7 +67,7 @@
 | 2 | 로컬 CLI: 로그인된 Codex(`image_gen`) 또는 Grok(이미지, ACP 모드 영상) | 키가 없거나 계정 사유로 API가 거부했을 때. 구독 할당량 사용 |
 | 3 | 코드 아트(codeart2d) | 마지막 수단: 경로가 전혀 없거나 명시적으로 요청했을 때 |
 
-키는 환경 변수(`OPENAI_API_KEY`, `GEMINI_API_KEY`, `XAI_API_KEY`, `ARK_API_KEY`, `FAL_KEY`) 또는 사용자 설정 파일(Windows: `%APPDATA%\agent-sprite-forge\config.json`, macOS／Linux: `~/.config/agent-sprite-forge/config.json`)에 둡니다. 자세한 내용은 [Routes and providers](./README.md#routes-and-providers).
+키는 환경 변수(`OPENAI_API_KEY`, `GEMINI_API_KEY`, `XAI_API_KEY`, `ARK_API_KEY`, `FAL_KEY`) 또는 사용자 설정 파일(Windows: `%USERPROFILE%\agent-sprite-forge\config.json`, macOS／Linux: `~/.config/agent-sprite-forge/config.json`)에 둡니다. 자세한 내용은 [Routes and providers](./README.md#routes-and-providers).
 
 ## 링크
 

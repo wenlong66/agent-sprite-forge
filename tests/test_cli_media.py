@@ -50,6 +50,7 @@ def env(tmp_path, monkeypatch):
         monkeypatch.delenv(name, raising=False)
     monkeypatch.setenv("CODEX_HOME", str(tmp_path / "codex-home"))
     monkeypatch.setenv("GROK_HOME", str(tmp_path / "grok-home"))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path / "home"))
     monkeypatch.setenv("APPDATA", str(tmp_path / "appdata"))  # no real user config file is ever read
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
     log = tmp_path / "fake.log"

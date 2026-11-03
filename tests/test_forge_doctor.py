@@ -65,7 +65,7 @@ def npm_codex(prefix: Path, *, hoisted: bool = False, native: bool = True) -> tu
 
 def cold_env(tmp_path: Path) -> dict:
     """Environment overrides for a machine with no media CLI, no ffmpeg on PATH, no API key and no user
-    config file (APPDATA and XDG_CONFIG_HOME point inside the temporary home)."""
+    config file (USERPROFILE and XDG_CONFIG_HOME point inside the temporary home)."""
     (tmp_path / "empty-bin").mkdir(exist_ok=True)
     (tmp_path / "home").mkdir(exist_ok=True)
     return {"PATH": str(tmp_path / "empty-bin"), "HOME": str(tmp_path / "home"), "USERPROFILE": str(tmp_path / "home"),
@@ -547,7 +547,7 @@ def test_routes_follow_the_owner_order(tmp_path, cold, monkeypatch):
 
 
 def user_config(**fields) -> Path:
-    """The user config file where media_config looks for it (APPDATA / XDG_CONFIG_HOME of cold_env)."""
+    """The user config file where media_config looks for it (USERPROFILE / XDG_CONFIG_HOME of cold_env)."""
     path = media_config.config_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(fields), encoding="utf-8")
@@ -565,10 +565,10 @@ def test_keys_in_the_user_config_count_as_configured(tmp_path, cold, monkeypatch
     assert (video["route"], video["options"][0]["model"]) == ("api:xai", "grok-imagine-video-1.5-lite")
     assert report["routeOrder"]["image"] == ["api:xai", "codeart2d"]
     assert_valid_contract(report, "media", "doctor_v1", skill="generate2dmedia")
-    result, shown = doctor_json(tmp_path, env={"APPDATA": os.environ["APPDATA"],
+    result, shown = doctor_json(tmp_path, env={"USERPROFILE": os.environ["USERPROFILE"],
                                                "XDG_CONFIG_HOME": os.environ["XDG_CONFIG_HOME"]})
     assert shown["apiKeys"] == {"openai": False, "gemini": False, "xai": True, "byteplus": False, "fal": False, "wan": False}
-    text = run_cli([DOCTOR], cwd=tmp_path, env={**cold_env(tmp_path), "APPDATA": os.environ["APPDATA"],
+    text = run_cli([DOCTOR], cwd=tmp_path, env={**cold_env(tmp_path), "USERPROFILE": os.environ["USERPROFILE"],
                                                  "XDG_CONFIG_HOME": os.environ["XDG_CONFIG_HOME"]}, timeout=120)
     assert "openai=no  gemini=no  xai=yes" in text.stdout
     for output in (json.dumps(report), result.stdout, result.stderr, text.stdout, text.stderr):
