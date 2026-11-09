@@ -609,12 +609,13 @@ When no image route exists, or when you ask for code-drawn art, `codeart2d` draw
 
 ## Included skills
 
-Keep the five skill folders together: they call each other's scripts by relative path.
+Keep the six skill folders together: they call each other's scripts by relative path.
 
 | Skill | Use it for | Main outputs |
 | --- | --- | --- |
 | [`generate2dsprite`](./skills/generate2dsprite) | Master stills, characters, creatures, props, icons and FX; sheets for FX, icons and props; packaging frames from any source | `master.json`, registered frames, clips with ticks and events, palettes, QA, Aseprite/Godot exports |
 | [`video2dsprite`](./skills/video2dsprite) | A whole sprite set from one master still (`sprite_set.py`), or one supplied clip | Gated, soft-keyed, registered, looped or retimed, finished frames; animation.json 3.0, WebM alpha, packed MP4, PNG fallback |
+| [`gif2dsprite`](./skills/gif2dsprite) | GIF-generated actions from one master, or a supplied animated GIF | Composited RGBA frames and original per-frame timing; shared keying, registration, finish and engine packages |
 | [`generate2dmap`](./skills/generate2dmap) | Top-down and side-scroll maps, tiles, prop kits, parallax, HD-2D plates | map_bundle.v2, collision and navigation checks, Tiled/Godot/LDtk exports, HTML preview, scene loops |
 | [`generate2dmedia`](./skills/generate2dmedia) | The route to every generated image and clip (`route_media.py`), the five API providers, the local Codex/Grok CLI routes, the capability check | Media with receipts, ledger lines, route proofs |
 | [`codeart2d`](./skills/codeart2d) | Code-drawn pixel sprites, flat vector art, FX, autotiles, layouts, parallax: the last resort, or on request | Exact-palette frames, clips, fx.v1 runtime, seam-proven tilesets, playable bundles, `codeart-meta.json` |
@@ -644,6 +645,7 @@ Run from your project root as `python "<skill-dir>/scripts/<tool>.py" ...`. Ever
 | | `gait_loop.py`, `retime.py`, `animation_review.py` | Measured walk/run/idle loops and stride; one-shot auto retime and impact/hold timing on ticks; classified candidates |
 | | `engine_export.py`, `validate_animation.py` | animation.json 3.0 with WebM alpha, packed MP4 and mobile tiers behind a residue gate; decoded verify; contract check |
 | | `references/runtime/forge-runtime.mjs`, `packed-alpha-webgl.mjs` | Distance-driven walks, hit-stop, transitions; WebGL packed-alpha compositor |
+| gif2dsprite | `gif2dsprite.py` | `extract` composites GIF frames and records original delays; `select` binds those delays to final frames for the shared exporter |
 | generate2dmap | `extract_prop_pack.py` | Anchored transparent props with footprints and despill (prop_pack.v2) |
 | | `extract_terrain_tiles.py`, `extract_platform_strip.py` | Terrain fills, overlays, iso/hex and Wang rows; platform caps with surface and seam QC |
 | | `compose_layered_preview.py`, `validate_parallax.py`, `conform_background.py` | Ground-line sorted previews with audit overlays; parallax coverage and seams; fitting paintings to screens |
@@ -749,6 +751,7 @@ agent-sprite-forge/
   skills/
     generate2dsprite/    SKILL.md, agents/openai.yaml, references/, scripts/
     video2dsprite/
+    gif2dsprite/
     generate2dmap/
     generate2dmedia/
     codeart2d/           examples/ with every spec shown above

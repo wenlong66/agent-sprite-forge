@@ -88,6 +88,14 @@
 2. **原画：** `Use $generate2dsprite to make a master still of <你的角色>, side view, facing right, HD.`
 3. **整套动作：** `Use $video2dsprite to animate the approved master: idle, walk, run, attack, jump and hurt.`
 
+### 用 GIF 生成动画
+
+[`gif2dsprite`](./skills/gif2dsprite/SKILL.md) 使用当前环境中支持动态 GIF 的模型，为同一张已确认原画生成各个动作，也支持用户提供的 GIF。它直接合成完整 RGBA 帧，保留每帧时长和透明度，然后复用现有抠图、对位、HD / pixel / hibit 后期与引擎导出流程。没有可用的 GIF 生成工具时，会准备提示词和参考图并报告缺失能力。
+
+调用示例：`使用 $gif2dsprite，以已确认的角色原画生成 idle、walk 的 GIF 动作，保留原始节奏并导出游戏动画。`
+
+`python tools/install_skills.py --apply --host codex` 会安装此 skill 及其同级依赖。默认导出保留逐帧时长的 PNG 动画包；可选 WebM / packed MP4 需满足现有导出器的恒定帧率要求。命令及限制见 [GIF 流程说明](./skills/gif2dsprite/references/pipeline.md)。
+
 ## 生成路径与 API key
 
 | 顺序 | 路径 | 何时使用 |

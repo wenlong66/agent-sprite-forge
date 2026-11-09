@@ -1,0 +1,4 @@
+interface:
+  display_name: "GIF to 2D Sprite"
+  short_description: "Turn generated GIF motion into game-ready sprites"
+  default_prompt: "Use $gif2dsprite to animate my approved character as GIF actions and package the frames for my game."

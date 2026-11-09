@@ -8,6 +8,7 @@
         "skills/generate2dsprite/scripts/forge_core.py",
         "skills/generate2dmap/scripts/forge_core.py",
         "skills/video2dsprite/scripts/forge_core.py",
+        "skills/gif2dsprite/scripts/forge_core.py",
         "skills/codeart2d/scripts/forge_core.py"
       ]
     },
