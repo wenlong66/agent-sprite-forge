@@ -10,13 +10,16 @@ from __future__ import annotations
 import importlib.util
 import json
 import re
+import subprocess
+import sys
+import time
 from pathlib import Path
 
 import numpy as np
 import pytest
 from PIL import Image
 
-from forge_testutils import SKILLS_DIR, load_script, require_ffmpeg, run_cli
+from forge_testutils import SKILLS_DIR, assert_valid_contract, load_script, require_ffmpeg, run_cli
 
 SCRIPTS = SKILLS_DIR / "video2dsprite" / "scripts"
 SPRITE_SET = SCRIPTS / "sprite_set.py"
@@ -297,6 +300,15 @@ def log_lines(path: Path) -> list[dict]:
     if path.is_dir():
         return [json.loads(item.read_text(encoding="utf-8")) for item in sorted(path.glob("*.json"))]
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()] if path.is_file() else []
+
+
+def index_action(root: Path, ident: str) -> dict:
+    """forge_index.py scan of ``root`` (the host's view, contract-checked) and one action of its only set."""
+    result = run_cli([SCRIPTS / "forge_index.py", "scan", root])
+    assert result.returncode == 0, result.stderr
+    index = json.loads(result.stdout)
+    assert_valid_contract(index, "host", "asset_index_v1")
+    return next(item for item in index["sets"][0]["actions"] if item["id"] == ident)
 
 
 def assert_no_absolute_paths(folder: Path) -> None:
@@ -660,8 +672,17 @@ def test_set_flow_retake_resume_review_accept_retake_report(ss, fake, tmp_path):
     assert summary["maxClips"] == 9
     env = fake_env(fake, tmp_path, FAKE_FAIL="attack:turn", FORGE_FINISH_FRAMES=fake["finisher"])
 
-    result, summary = cli("run", "--plan", plan_path, "--stagger", 0, env=env)
+    progress_file = tmp_path / "host" / "progress.jsonl"
+    result, summary = cli("run", "--plan", plan_path, "--stagger", 0, "--progress-file", progress_file, env=env)
     assert result.returncode == 0, result.stderr + result.stdout
+    assert len(result.stdout.strip().splitlines()) == 1   # progress never reaches stdout
+    lines = log_lines(progress_file)
+    for line in lines:
+        assert_valid_contract(line, "host", "progress_line_v1")
+    stages = [line["stage"] for line in lines]
+    assert {line["tool"] for line in lines} == {"sprite_set"} and stages[0] == "start" and stages[-1] == "done"
+    assert {"job", "generate", "evaluate", "post", "finish", "package", "verify"} <= set(stages)
+    assert {"done": 3, "total": 3} == {key: lines[-1][key] for key in ("done", "total")}
     assert summary["status"] == "complete" and summary["generated"] == 4
     assert {k: (v["status"], v["takes"], v["chosen"]) for k, v in summary["actions"].items()} == {
         "idle": ("done", 1, 1), "walk": ("done", 1, 1), "attack": ("done", 2, 2)}
@@ -725,14 +746,40 @@ def test_set_flow_retake_resume_review_accept_retake_report(ss, fake, tmp_path):
     assert review["schema"] == "video2dsprite.sprite_set_review.v1" and "EVERY sheet" in review["instructions"]
     result, summary = cli("accept", "--plan", plan_path, "--action", "idle", "--take", 1, "--note", "looked")
     assert result.returncode == 0 and summary["accepted"] is True and summary["status"] == "done"
+    # the take was packaged already: accept wrote the verdict into its package (engine_export.py review)
+    package = tmp_path / "set" / "actions" / "idle" / "takes" / "t01" / "package"
+    assert summary["reviewStatus"] == "accepted" and Path(summary["package"]) == package.resolve()
+    manifest = json.loads((package / "animation.json").read_text(encoding="utf-8"))
+    assert manifest["reviewStatus"] == "accepted"
+    assert {c["id"]: c["status"] for c in manifest["qa"]["checks"]}["review_verdict"] == "pass"
+    assert json.loads((package / "animation-qa.json").read_text(encoding="utf-8")) == manifest["qa"]
+    provenance = json.loads((package / "provenance.json").read_text(encoding="utf-8"))
+    assert provenance["review"]["boundTo"] == "inputDigest" and provenance["review"]["status"] == "accepted"
+    report = json.loads((package / "verify-qa.json").read_text(encoding="utf-8"))
+    assert report["manifestSha256"] == ss.forge_core.sha256_file(package / "animation.json")
+    checked = run_cli([SCRIPTS / "validate_animation.py", package, "--require-review", "--require-verify"])
+    assert checked.returncode == 0, checked.stderr + checked.stdout   # QA, verify and review stay hash-bound
+    accepted = json.loads((tmp_path / "set" / "set_state.json").read_text(encoding="utf-8"))["actions"]["idle"]
+    verdict = json.loads((tmp_path / "set" / accepted["accepted"]["verdict"]["path"]).read_text(encoding="utf-8"))
+    assert_valid_contract(verdict, "video", "review_verdict_v1")
+    assert accepted["agentRevision"] == 1 and accepted["accepted"]["reviewStatus"] == "accepted"
+    again, summary = cli("accept", "--plan", plan_path, "--action", "idle", "--take", 1)   # idempotent
+    assert again.returncode == 0 and summary["reviewStatus"] == "accepted"
+    assert json.loads((package / "animation.json").read_text(encoding="utf-8")) == manifest
 
     # a semantic retake: the next run makes take 3 with the new clause and keeps every earlier fix
     result, summary = cli("retake", "--plan", plan_path, "--action", "attack", "--fix", "weapon-shape")
     assert result.returncode == 0 and summary["round"] == 2 and summary["fixes"] == ["weapon-shape"]
+    attack = index_action(tmp_path / "set", "attack")   # the take 2 package no longer stands for attack
+    assert attack["package"] is None and attack["reviewStatus"] is None
+    assert attack["previousPackage"] == "actions/attack/takes/t02/package"
     result, summary = cli("run", "--plan", plan_path, "--stagger", 0, env=env)
     assert result.returncode == 0, result.stderr
     assert summary["actions"]["attack"] == {"status": "done", "takes": 3, "chosen": 3, "accepted": False,
                                             "package": "actions/attack/takes/t03/package", "message": None}
+    attack = index_action(tmp_path / "set", "attack")
+    assert (attack["package"], attack["packageTake"], attack["previousPackage"]) == (
+        "actions/attack/takes/t03/package", 3, None)
     assert summary["actions"]["idle"]["accepted"] is True and len(log_lines(tmp_path / "fake-media-calls")) == 5
     third = (tmp_path / "set" / "actions" / "attack" / "takes" / "t03" / "prompt.txt").read_text("utf-8")
     assert "never doubling, no second blade" in third and "never faces the camera" in third
@@ -752,6 +799,9 @@ def test_set_flow_retake_resume_review_accept_retake_report(ss, fake, tmp_path):
             assert (tmp_path / "set" / item["outputs"][key]).is_file()
         assert item["finish"]["finisher"] == "fake_finish_frames.py"
     assert_no_absolute_paths(tmp_path / "set")
+    assert_valid_contract(json.loads(plan_path.read_text(encoding="utf-8")), "video", "sprite_set_plan_v1")
+    assert_valid_contract(json.loads((tmp_path / "set" / "set_state.json").read_text(encoding="utf-8")), "video",
+                          "sprite_set_state_v1")
 
 
 @pytest.mark.ffmpeg
@@ -832,6 +882,146 @@ def test_provider_errors_stop_the_action_for_this_run_only(ss, fake, tmp_path):
     assert len(log_lines(tmp_path / "fake-media-calls")) == 2   # two tries per run, then the run moves on
 
 
+PARTLY_FAILING_FINISHER = r'''
+"""The fake finisher, except that it crashes for the action named by FAKE_BREAK_ACTION."""
+import os
+import runpy
+import sys
+from pathlib import Path
+
+out = Path(sys.argv[sys.argv.index("--output-dir") + 1])
+if out.parent.parent.parent.name == os.environ["FAKE_BREAK_ACTION"]:
+    print("error: the finisher crashed on purpose", file=sys.stderr)
+    raise SystemExit(1)
+sys.argv[0] = os.environ["FAKE_REAL_FINISHER"]
+runpy.run_path(os.environ["FAKE_REAL_FINISHER"], run_name="__main__")
+'''
+
+
+@pytest.mark.ffmpeg
+def test_accept_before_packaging_puts_the_verdict_into_the_new_package(ss, fake, tmp_path):
+    """A run that packages some actions and fails another exits 4 (published, status fail). An accept recorded
+    before the failed take is packaged reaches its package through engine_export package --review: animation.json
+    says accepted from the start, bound to the selection the package is cut by. A retake afterwards takes that
+    package away from the action in the host's index."""
+    require_ffmpeg()
+    master = write_master(tmp_path / "art", fake, ss)
+    plan_path = tmp_path / "set" / "set_plan.json"
+    cli("plan", "--master", master, "--output-dir", tmp_path / "set", "--actions", "idle,walk", "--target-height", 48)
+    broken = tmp_path / "broken_finisher.py"
+    broken.write_text(PARTLY_FAILING_FINISHER, encoding="utf-8")
+    progress_file = tmp_path / "progress.jsonl"
+    result, summary = cli("run", "--plan", plan_path, "--stagger", 0, "--progress-file", progress_file,
+                          env=fake_env(fake, tmp_path, FORGE_FINISH_FRAMES=broken, FAKE_BREAK_ACTION="idle",
+                                       FAKE_REAL_FINISHER=fake["finisher"]))
+    assert result.returncode == 4, result.stderr   # walk is packaged, idle is not: published with status fail
+    assert len(result.stdout.strip().splitlines()) == 1 and summary["status"] == "incomplete"
+    assert summary["actions"]["idle"]["status"] == "post-error" and summary["actions"]["idle"]["package"] is None
+    assert summary["actions"]["walk"]["status"] == "done" and summary["actions"]["walk"]["package"]
+    assert "error: the set is incomplete: idle post-error" in result.stderr and "(packaged: walk)" in result.stderr
+    assert log_lines(progress_file)[-1]["stage"] == "done"
+    assert cli("review", "--plan", plan_path)[0].returncode == 0
+    result, summary = cli("accept", "--plan", plan_path, "--action", "idle", "--take", 1)
+    assert result.returncode == 0 and summary["reviewStatus"] is None and "run sprite_set.py run" in summary["next"]
+    result, summary = cli("run", "--plan", plan_path, "--stagger", 0,
+                          env=fake_env(fake, tmp_path, FORGE_FINISH_FRAMES=fake["finisher"]))
+    assert result.returncode == 0, result.stderr
+    assert summary["actions"]["idle"]["status"] == "done" and summary["actions"]["idle"]["accepted"] is True
+    package = tmp_path / "set" / summary["actions"]["idle"]["package"]
+    manifest = json.loads((package / "animation.json").read_text(encoding="utf-8"))
+    provenance = json.loads((package / "provenance.json").read_text(encoding="utf-8"))
+    assert manifest["reviewStatus"] == "accepted" and provenance["review"]["boundTo"] == "selection"
+    state = json.loads((tmp_path / "set" / "set_state.json").read_text(encoding="utf-8"))
+    accepted = state["actions"]["idle"]["accepted"]
+    assert accepted["reviewStatus"] == "accepted" and accepted["package"] == summary["actions"]["idle"]["package"]
+    assert (tmp_path / "set" / accepted["verdict"]["path"]).is_file()
+    assert_valid_contract(state, "video", "sprite_set_state_v1")
+    idle = index_action(tmp_path / "set", "idle")
+    assert (idle["package"], idle["packageTake"], idle["reviewStatus"]) == (
+        "actions/idle/takes/t01/package", 1, "accepted")
+    # accepted, then retaken: the accepted package of the rejected take must not reach a host as the idle clip
+    result, _ = cli("retake", "--plan", plan_path, "--action", "idle", "--fix", "never-turn")
+    assert result.returncode == 0, result.stderr
+    idle = index_action(tmp_path / "set", "idle")
+    assert idle["package"] is None and idle["reviewStatus"] is None and idle["accepted"] is None
+    assert idle["previousPackage"] == "actions/idle/takes/t01/package"
+
+
+def test_run_exit_codes_tell_a_partly_packaged_set_from_a_failed_one(ss, fake, tmp_path):
+    master = write_master(tmp_path / "art", fake, ss)
+    cli("plan", "--master", master, "--output-dir", tmp_path / "set", "--actions", "idle,walk", "--formats", "png")
+    runner = ss.SetRunner(tmp_path / "set")
+    cases = {("done", "done"): ("complete", 0), ("done", "done-warn"): ("complete-with-warnings", 0),
+             ("done", "post-error"): ("incomplete", 4), ("done-warn", "failed"): ("incomplete", 4),
+             ("failed", "post-error"): ("incomplete", 1), ("error", "pending"): ("incomplete", 1),
+             ("done", "no-route"): ("waiting-for-clips", 3)}
+    for (idle, walk), expected in cases.items():
+        runner.astate("idle")["status"], runner.astate("walk")["status"] = idle, walk
+        summary, code = runner.summary(["idle", "walk"], 0)
+        assert (summary["status"], code) == expected, (idle, walk)
+    assert ss.forge_core.EXIT_PUBLISHED_FAIL == 4
+    # the summary names a package only while it holds the chosen take and window
+    runner.astate("idle").update(chosen={"take": 2, "tag": "", "window": None},
+                                 output={"take": 1, "tag": "", "package": "actions/idle/takes/t01/package"})
+    assert runner.summary(["idle"], 0)[0]["actions"]["idle"]["package"] is None
+    runner.astate("idle")["chosen"] = {"take": 1, "tag": "", "window": None}
+    assert runner.summary(["idle"], 0)[0]["actions"]["idle"]["package"] == "actions/idle/takes/t01/package"
+
+
+def test_a_run_never_loses_an_accept_or_retake_made_while_it_works(ss, fake, tmp_path):
+    """set_state.json is shared: the agent's verbs write under set_state.lock, and a run that read the state
+    before them merges their decisions on its next save instead of overwriting them."""
+    master = write_master(tmp_path / "art", fake, ss)
+    cli("plan", "--master", master, "--output-dir", tmp_path / "set", "--actions", "idle,walk", "--formats", "png")
+    running = ss.SetRunner(tmp_path / "set")
+    running.astate("idle").update(status="generating")
+    running.astate("walk").update(status="generating")
+    running.save()
+    # a retake (CLI, another process) and an accept-like decision (another runner under the lock) while it runs
+    result, summary = cli("retake", "--plan", tmp_path / "set", "--action", "walk", "--fix", "never-turn")
+    assert result.returncode == 0 and summary["round"] == 2
+    with ss.locked_runner(tmp_path / "set") as agent:
+        st = agent.astate("idle")
+        st["accepted"] = {"take": 1, "window": None, "note": "", "at": ss._now()}
+        st["agentRevision"] = int(st.get("agentRevision", 0)) + 1
+        agent.save()
+    running.astate("idle")["message"] = "the run's own note"
+    running.astate("walk")["message"] = "stale: the run did not see the retake"
+    running.save()
+    state = json.loads((tmp_path / "set" / "set_state.json").read_text(encoding="utf-8"))
+    idle, walk = state["actions"]["idle"], state["actions"]["walk"]
+    assert idle["accepted"]["take"] == 1 and idle["agentRevision"] == 1 and idle["message"] == "the run's own note"
+    assert walk["round"] == 2 and walk["status"] == "pending" and walk["message"] is None
+    assert [fix["id"] for fix in walk["fixes"]] == ["never-turn"] and walk["agentRevision"] == 1
+    assert any("accept or retake made during this run" in note for note in running.notes)
+
+
+def test_retake_waits_for_the_set_lock_held_by_another_process(ss, fake, tmp_path):
+    master = write_master(tmp_path / "art", fake, ss)
+    cli("plan", "--master", master, "--output-dir", tmp_path / "set", "--actions", "idle", "--formats", "png")
+    lock = tmp_path / "set" / ss.LOCK_FILE
+    holder = subprocess.Popen([sys.executable, "-c", "import sys, time; sys.path.insert(0, sys.argv[1]); "
+                               "import forge_core\nwith forge_core.file_lock(sys.argv[2]):\n"
+                               "    print('held', flush=True); time.sleep(3)", str(SCRIPTS), str(lock)],
+                              stdout=subprocess.PIPE, text=True)
+    try:
+        assert holder.stdout.readline().strip() == "held"
+        with pytest.raises(TimeoutError):
+            with ss.forge_core.file_lock(lock, timeout=0.3):
+                pass
+        started = time.monotonic()
+        result, summary = cli("retake", "--plan", tmp_path / "set", "--action", "idle", "--fix", "never-turn")
+        assert result.returncode == 0 and summary["round"] == 2
+        assert time.monotonic() - started > 0.5   # it waited for the holder instead of writing beside it
+    finally:
+        holder.wait(timeout=30)
+        holder.stdout.close()
+    with ss.forge_core.file_lock(lock, timeout=5):
+        with ss.forge_core.file_lock(lock):   # re-entrant within one thread
+            state = json.loads((tmp_path / "set" / "set_state.json").read_text(encoding="utf-8"))
+    assert state["actions"]["idle"]["agentRevision"] == 1
+
+
 def test_master_json_shapes_and_path_scrubbing(ss, tmp_path):
     base = tmp_path
     pick = ss._master_png_ref
@@ -852,3 +1042,62 @@ def test_master_json_shapes_and_path_scrubbing(ss, tmp_path):
     scrubbed = ss._scrub({"a": r"C:\Users\me\clip.mp4", "b": "error: D:/x/y/frames-clean is empty",
                           "c": ["/tmp/z.png", "24/1", "rel/path.png"], "_private": 1})
     assert scrubbed == {"a": "clip.mp4", "b": "error: frames-clean is empty", "c": ["z.png", "24/1", "rel/path.png"]}
+
+
+HAMMER = r'''
+"""A host while sprite_set.py saves set_state.json: "scan" indexes the set in a loop (forge_index.scan, which
+reads under set_state.lock); "read" reads set_state.json naively, without the lock, about 400 times a second."""
+import json, sys, time
+from pathlib import Path
+sys.path.insert(0, sys.argv[1])
+import forge_index
+mode, root, stop = sys.argv[2], Path(sys.argv[3]), Path(sys.argv[4])
+count = retries = 0
+problems = []
+print("ready", flush=True)
+deadline = time.monotonic() + 120
+while not stop.exists() and time.monotonic() < deadline:
+    if mode == "scan":
+        index = forge_index.scan(root)
+        problems += [line for line in index["warnings"] if "set_state" in line]
+    else:
+        try:
+            json.loads((root / "set_state.json").read_bytes())
+        except PermissionError:   # opened inside the replace: a careful host retries
+            retries += 1
+        time.sleep(0.0025)
+    count += 1
+print(json.dumps({"mode": mode, "count": count, "retries": retries, "problems": problems[:5]}), flush=True)
+'''
+
+
+def test_a_host_indexing_in_a_loop_never_breaks_a_runs_saves(ss, fake, tmp_path):
+    """Readers on Windows hold set_state.json open, and a rename onto an open file fails (WinError 5). A host that
+    scans on every file event must never abort a long run's save: scans read under set_state.lock, and the save's
+    atomic replace waits for naive readers that hold the file without the lock."""
+    master = write_master(tmp_path / "art", fake, ss)
+    cli("plan", "--master", master, "--output-dir", tmp_path / "set", "--actions", "idle,walk", "--formats", "png")
+    runner = ss.SetRunner(tmp_path / "set")
+    runner.save()
+    script, stop = tmp_path / "hammer.py", tmp_path / "stop"
+    script.write_text(HAMMER, encoding="utf-8")
+    hammers = [subprocess.Popen([sys.executable, str(script), str(SCRIPTS), mode, str(tmp_path / "set"), str(stop)],
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+               for mode in ("scan", "read", "read")]
+    try:
+        for hammer in hammers:
+            assert hammer.stdout.readline().strip() == "ready"
+        for number in range(150):
+            runner.astate("idle")["message"] = f"save {number}"
+            runner.astate("walk")["takes"] = [{"take": 1, "round": 1, "status": "open", "n": number}]
+            runner.save()   # raised PermissionError (WinError 5) on Windows before the fix
+    finally:
+        stop.write_text("stop", encoding="utf-8")
+        outputs = [hammer.communicate(timeout=60) for hammer in hammers]
+    for (out, err), hammer in zip(outputs, hammers):
+        assert hammer.returncode == 0, err
+        report = json.loads(out.strip().splitlines()[-1])
+        assert report["count"] > 0 and report["problems"] == [], report
+    state = json.loads((tmp_path / "set" / "set_state.json").read_text(encoding="utf-8"))
+    assert state["actions"]["idle"]["message"] == "save 149" and state["actions"]["walk"]["takes"][0]["n"] == 149
+    assert not list((tmp_path / "set").glob(".set_state.json.*.tmp"))

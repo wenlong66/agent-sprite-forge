@@ -113,7 +113,7 @@ def test_unreachable_door_fails(tmp_path):
     assert not [p for p in tmp_path.iterdir() if p.name.startswith(".")]  # no stage left behind
 
     run = run_cli([TOOL, "check", "--bundle", path, "--output-dir", out, "--publish-on-fail"])
-    assert run.returncode == 1 and json.loads(run.stdout)["status"] == "fail"
+    assert run.returncode == 4 and json.loads(run.stdout)["status"] == "fail"
     report = json.loads((out / "nav-report.json").read_text(encoding="utf-8"))
     assert {c["id"]: c for c in report["checks"]}["targets_reachable"]["value"]["unreachable"] == ["door-bell",
                                                                                                     "cellar-door"]
@@ -511,7 +511,7 @@ def test_report_inputs_list_the_linked_bundles(tmp_path):
     assert run.returncode == 0, run.stderr
     report = json.loads((out / "nav-report.json").read_text(encoding="utf-8"))
     assert [ref["path"] for ref in report["inputs"]] == ["../meadow/map-bundle.json", "../road/map-bundle.json"]
-    assert report["tool"] == {"name": "map_nav.py", "version": "0.5.0"}  # D29: the package version
+    assert report["tool"] == {"name": "map_nav.py", "version": "0.6.0"}  # D29: the package version
 
 
 # --------------------------------------------------------------------------- outputs and CLI

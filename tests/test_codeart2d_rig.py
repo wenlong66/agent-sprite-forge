@@ -79,9 +79,9 @@ def report_checks(output: Path) -> dict:
 
 
 def published_with_failed(result, check_id: str) -> bool:
-    """D26: without --strict-qc a failing run is published (the summary line names the failed checks) and exits
-    1 with one ASCII 'error: published with QA status fail: ...' line."""
-    assert result.returncode == 1, result.stderr
+    """Without --strict-qc a failing run is published (the summary line names the failed checks) and exits
+    4 with one ASCII 'error: published with QA status fail: ...' line."""
+    assert result.returncode == 4, result.stderr
     summary = json.loads(result.stdout)
     assert summary["qa"] == "fail" and check_id in summary["failed_checks"], summary
     assert result.stderr.startswith("error: published with QA status fail: ") and check_id in result.stderr
@@ -571,7 +571,7 @@ def test_hero_outputs_validate_against_the_contracts(hero_pixel):
     assert built["sampling"] == "nearest" and built["art_source"] == "code"
     report = read_json(output / "rig-report.json")
     assert_valid_contract(report, "codeart", "rig_report_v1", skill="codeart2d")
-    assert report["qa"]["tool"] == {"name": "codeart2d/rig_animate.py", "version": "0.5.0"}  # D29
+    assert report["qa"]["tool"] == {"name": "codeart2d/rig_animate.py", "version": "0.6.0"}  # D29
 
 
 def test_hero_example_validates_against_rig_anim_v1():

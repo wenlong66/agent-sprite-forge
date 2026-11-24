@@ -739,7 +739,7 @@ def test_cli_qc_failure_publishes_nothing(tmp_path, monkeypatch, capsys):
     E.package(options(clean, pkg, allow_key_residue=True))
     failing = {"status": "fail", "checks": [{"id": "packedAlpha.alpha_mae", "status": "fail", "value": 9.0,
                                              "threshold": 3.5}], "transports": {}}
-    monkeypatch.setattr(E, "verify_package", lambda folder: failing)
+    monkeypatch.setattr(E, "verify_package", lambda folder, progress=None: failing)
     assert E.main(["verify", "--package", str(pkg)]) == 1
     assert "packedAlpha.alpha_mae 9.0 (limit 3.5)" in capsys.readouterr().err
     assert not (pkg / "verify-qa.json").exists() and not list(pkg.glob(".verify-qa*"))
@@ -953,14 +953,14 @@ def test_expand_ticks_rules():
 
 def test_cycles_stay_whole_and_tool_version_is_the_package_version(tmp_path):
     """Reviewer nit: a whole cycle count is re-emitted as an integer. D29: QA envelopes record the package
-    version 0.5.0."""
+    version 0.6.0."""
     clean = tmp_path / "clean"
     frames = write_frames(clean, [body(dx=d) for d in range(4)])
     selection = selection_v2(tmp_path / "sel.json", frames, 0, 4, [0, 1, 2, 3], [83, 83, 84, 83], cycles=2)
     manifest = E.package(options(clean, tmp_path / "out", fps=None, selection=str(selection)))
     assert manifest["cycles"] == 2 and isinstance(manifest["cycles"], int)
-    assert manifest["qa"]["tool"] == {"name": "engine_export.py", "version": "0.5.0"}
-    assert read(tmp_path / "out" / "provenance.json")["version"] == "0.5.0"
+    assert manifest["qa"]["tool"] == {"name": "engine_export.py", "version": "0.6.0"}
+    assert read(tmp_path / "out" / "provenance.json")["version"] == "0.6.0"
 
 
 def test_cli_summary_and_internal_errors(tmp_path, monkeypatch, capsys):

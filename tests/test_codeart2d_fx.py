@@ -93,7 +93,7 @@ def test_strict_qc_failure_publishes_nothing(tmp_path):
     # Without --strict-qc the frames are published for inspection, and the failed QA still exits 1 (D26)
     loose = tmp_path / "loose"
     result = run_fx(write_spec(tmp_path / "case", escaping), loose)
-    assert result.returncode == 1, result.stderr
+    assert result.returncode == 4, result.stderr
     summary = json.loads(result.stdout)
     assert summary["qa"] == "fail" and summary["failed_checks"] == ["margins"]
     assert result.stderr.startswith("error: published with QA status fail: margins (see ") and result.stderr.isascii()
@@ -324,7 +324,7 @@ def test_example_outputs_validate_against_the_contracts(tmp_path):
     assert meta["qa"]["status"] == "pass" and meta["generator"] == "codeart2d/fx_build.py"
     report = read_json(output / "fx-report.json")
     assert_valid_contract(report, "codeart", "fx_report_v1", skill="codeart2d")
-    assert report["qa"]["tool"] == {"name": "codeart2d/fx_build.py", "version": "0.5.0"}  # D29
+    assert report["qa"]["tool"] == {"name": "codeart2d/fx_build.py", "version": "0.6.0"}  # D29
     built = read_json(output / "compiled-clips" / "animation-clips.json")
     assert_valid_contract(built, "sprite", "animation_clips_v2", skill="codeart2d")
     assert any(event["name"] == "hit" for event in built["clips"]["slash"]["events_ms"])  # D11: hits reach events_ms

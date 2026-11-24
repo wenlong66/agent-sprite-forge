@@ -383,7 +383,7 @@ def test_outputs_validate_against_the_contracts(examples):
         qa = json.loads((out / "autotile-qa.json").read_text(encoding="utf-8"))
         assert_valid_contract(qa, "common", "qaEnvelope", skill="codeart2d")
         assert qa["notProven"] and qa["method"] and qa["inputs"][0]["path"].endswith(".material.json")
-        assert qa["tool"] == {"name": "codeart2d/autotile_build", "version": "0.5.0"}  # D29
+        assert qa["tool"] == {"name": "codeart2d/autotile_build", "version": "0.6.0"}  # D29
         for ref in qa["outputs"] + meta["outputs"]:
             file = out / ref["path"]
             assert hashlib.sha256(file.read_bytes()).hexdigest() == ref["sha256"]
@@ -398,7 +398,7 @@ def test_outputs_validate_against_the_contracts(examples):
             assert_valid_contract(manifest, "map", "tileset_v1", skill="codeart2d")
             assert manifest["qa"] == qa_ref  # D5: a fileRef of the QA file, bound to its bytes
             assert_valid_contract(manifest["qa"], "common", "fileRef", skill="codeart2d")
-            assert manifest["generator"] == {"name": "codeart2d/autotile_build", "version": "0.5.0"}
+            assert manifest["generator"] == {"name": "codeart2d/autotile_build", "version": "0.6.0"}
             atlas = out / manifest["image"]
             assert hashlib.sha256(atlas.read_bytes()).hexdigest() == manifest["sha256"]
             assert manifest["seamless_verified"] is True and manifest["seam_proof"]["mismatches"] == 0
@@ -460,7 +460,7 @@ def test_strict_qc_failure_publishes_nothing(tmp_path):
                  "--max-repetition", "0")
     summary = json.loads(result.stdout)
     (failed,) = summary["failed_checks"]
-    assert result.returncode == 1 and summary["status"] == "fail" and failed.endswith("/repetition_index")
+    assert result.returncode == 4 and summary["status"] == "fail" and failed.endswith("/repetition_index")
     assert result.stderr.startswith(f"error: published with QA status fail: {failed} (see ")
     assert result.stderr.isascii() and len(result.stderr.strip().splitlines()) == 1
     assert json.loads((out / "autotile-qa.json").read_text(encoding="utf-8"))["status"] == "fail"

@@ -226,9 +226,9 @@ def test_strict_qc_failure_publishes_nothing(tmp_path):
     assert "exits_reachable" in result.stderr and "east" in result.stderr
     assert sorted(p.name for p in tmp_path.iterdir()) == ["layout.json"]
     # without --strict-qc the same map is published with a failing QA envelope, for the debug overlay, and the
-    # failed QA still exits 1 with one error line naming the checks (D26; r2-conventions F9)
+    # failed QA exits 4 (published) with one error line naming the checks (D26; r2-conventions F9)
     result = build(write_spec(tmp_path, spec), tmp_path / "map", "--preview")
-    assert result.returncode == 1, result.stderr
+    assert result.returncode == 4, result.stderr
     summary = json.loads(result.stdout)
     assert summary["status"] == "fail" and summary["failed_checks"][0] == "exits_reachable"
     assert result.stderr.startswith(f"error: published with QA status fail: {', '.join(summary['failed_checks'])} "
@@ -484,8 +484,8 @@ def test_bundle_and_sidecars_validate(meadow):
         assert sha256_of(meadow["a"] / ref["path"]) == ref["sha256"], ref["path"]
     assert bundle["art_source"] == "code" and bundle["placeholder"] is True  # flat-colour ground, no tileset
     assert out["codeart-meta.json"]["placeholder"] is True
-    assert out["layout-qa.json"]["tool"] == {"name": "layout_build", "version": "0.5.0"}  # D29
-    assert bundle["provenance"]["version"] == "0.5.0"
+    assert out["layout-qa.json"]["tool"] == {"name": "layout_build", "version": "0.6.0"}  # D29
+    assert bundle["provenance"]["version"] == "0.6.0"
     assert bundle["layers"][0] == {"name": "ground", "kind": "image", "image": "ground.png",
                                    "sha256": sha256_of(meadow["a"] / "ground.png")}
     assert bundle["terrain"]["sha256"] == sha256_of(meadow["a"] / "terrain-vertices.json")
@@ -843,7 +843,7 @@ def test_unreachable_interaction_and_spawn_are_reported(tmp_path):
         scatter=[])
     out = tmp_path / "map"
     result = build(write_spec(tmp_path, spec), out)
-    assert result.returncode == 1, result.stderr  # published, and the failed QA exits 1 (D26)
+    assert result.returncode == 4, result.stderr  # published, and the failed QA exits 4
     assert "spawns_reachable, interactions_reachable" in result.stderr
     qa = json.loads((out / "layout-qa.json").read_text(encoding="utf-8"))
     checks = {check["id"]: check for check in qa["checks"]}

@@ -111,7 +111,7 @@ def test_render_strict_qc_failure_publishes_nothing(tmp_path, capsys):
     code, stdout, stderr = svg_cli(capsys, "render", "--svg", svg, "--palette", palette, "--output-dir",
                                    tmp_path / "loose", "--crisp", "--backend", "resvg_py")
     summary = summary_of(stdout)
-    assert code == 1 and summary["qa"] == "fail" and summary["failed_checks"] == ["off_palette"]
+    assert code == 4 and summary["qa"] == "fail" and summary["failed_checks"] == ["off_palette"]
     assert stderr.startswith("error: published with QA status fail: off_palette (see ") and stderr.isascii()
     assert (tmp_path / "loose" / "codeart-meta.json").is_file()
 
@@ -337,7 +337,7 @@ def test_doctor_passes_on_resvg_py_and_writes_a_qa_envelope(tmp_path, capsys):
     assert_valid_contract(data, "common", "qaEnvelope", skill="codeart2d")
     assert data["schema"] == "codeart2d.doctor_report.v1"
     assert_valid_contract(data, "codeart", "doctor_report_v1", skill="codeart2d")
-    assert data["tool"] == {"name": "svg_render.py doctor", "version": "0.5.0"}  # D29
+    assert data["tool"] == {"name": "svg_render.py doctor", "version": "0.6.0"}  # D29
     assert {"cases", "backends", "primary", "lint"} <= set(data), "the codeart_core.run_doctor shape is kept"
     ids = {check["id"]: check["status"] for check in data["checks"]}
     assert ids["primary"] == "pass" and ids["resvg_py:t01@4x"] == "pass" and ids["resvg_py:t17@1x"] == "pass"

@@ -9,7 +9,7 @@ import yaml
 
 ROOT = Path(__file__).parents[1]
 SKILLS = ROOT / "skills"
-SKILL_NAMES = ["codeart2d", "generate2dmap", "generate2dmedia", "generate2dsprite", "video2dsprite"]
+SKILL_NAMES = ["codeart2d", "generate2dmap", "generate2dmedia", "generate2dsprite", "gif2dsprite", "video2dsprite"]
 EXPLICIT_ONLY = {"generate2dmedia", "codeart2d"}
 # Agent Skills spec keys plus the Claude Code extensions we accept.
 FRONTMATTER_ALLOWED = {
@@ -132,7 +132,7 @@ def test_plugin_manifests():
     plugin = json.loads((ROOT / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
     market = json.loads((ROOT / ".claude-plugin" / "marketplace.json").read_text(encoding="utf-8"))
     assert plugin["name"] == "agent-sprite-forge"
-    assert plugin["version"] == "0.5.0"
+    assert plugin["version"] == "0.6.0"
     entry = next(p for p in market["plugins"] if p["name"] == plugin["name"])
     assert entry["source"] == "./"
     assert entry.get("version", plugin["version"]) == plugin["version"]
